@@ -7,6 +7,16 @@ from datetime import datetime, timezone
 import obd
 
 
+DASHBOARD_COMMANDS = [
+    "RPM",
+    "SPEED",
+    "COOLANT_TEMP",
+    "THROTTLE_POS",
+    "ENGINE_LOAD",
+    "INTAKE_TEMP",
+]
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", help="ELM327 port, for example /dev/ttyUSB0")
@@ -23,25 +33,52 @@ def simple_value(response):
         return "-"
 
     value = response.value
+    if all(hasattr(value, attr) for attr in ["MIL", "DTC_count", "ignition_type"]):
+        return "MIL=%s DTC=%s ignition=%s" % (
+            value.MIL,
+            value.DTC_count,
+            value.ignition_type,
+        )
+
     return str(value)
+
+
+def connect(port):
+    return obd.OBD(port)
+
+
+def get_commands(connection, names=None):
+    if names is None:
+        return sorted(
+            [
+                cmd
+                for cmd in connection.supported_commands
+                if cmd.mode == 1 and not cmd.name.startswith("PIDS_")
+            ],
+            key=lambda cmd: (cmd.mode, cmd.pid, cmd.name),
+        )
+
+    commands = []
+    for name in names:
+        cmd = getattr(obd.commands, name)
+        if connection.supports(cmd):
+            commands.append(cmd)
+    return commands
+
+
+def read_values(connection, commands):
+    return {cmd.name: simple_value(connection.query(cmd)) for cmd in commands}
 
 
 def main():
     args = parse_args()
 
-    connection = obd.OBD(args.port)
+    connection = connect(args.port)
     if connection.status() == obd.OBDStatus.NOT_CONNECTED:
         print("Could not connect to ELM327")
         return 1
 
-    commands = sorted(
-        [
-            cmd
-            for cmd in connection.supported_commands
-            if cmd.mode == 1 and not cmd.name.startswith("PIDS_")
-        ],
-        key=lambda cmd: (cmd.mode, cmd.pid, cmd.name),
-    )
+    commands = get_commands(connection)
 
     print("Connected")
     print("Reading %d commands every %.1f seconds" % (len(commands), args.interval))
@@ -49,9 +86,8 @@ def main():
     try:
         while True:
             print("\n%s" % utc_now())
-            for cmd in commands:
-                value = simple_value(connection.query(cmd))
-                print("%s: %s" % (cmd.name, value))
+            for name, value in read_values(connection, commands).items():
+                print("%s: %s" % (name, value))
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print("\nStopped")
