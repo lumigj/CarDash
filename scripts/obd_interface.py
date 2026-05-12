@@ -138,9 +138,9 @@ class ObdWindow(QWidget):
 
     def closeEvent(self, event):
         self.query_thread.stop()
-        self.query_thread.wait()
         if self.connection:
             self.connection.close()
+        self.query_thread.wait()
         event.accept()
 
 
