@@ -4,10 +4,22 @@ import argparse
 import sys
 
 import obd
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 from obd_logger import DASHBOARD_COMMANDS, connect, get_commands, read_values
+
+
+mock = True
+
+MOCK_VALUES = {
+    "RPM": "805 revolutions_per_minute",
+    "SPEED": "0 kilometer_per_hour",
+    "COOLANT_TEMP": "89 degree_Celsius",
+    "THROTTLE_POS": "14 percent",
+    "ENGINE_LOAD": "38 percent",
+    "INTAKE_TEMP": "70 degree_Celsius",
+}
 
 
 def parse_args():
@@ -24,12 +36,14 @@ class ObdWindow(QWidget):
         self.commands = commands
 
         self.setWindowTitle("OBD Dashboard")
+        self.setStyleSheet("background: black; color: white;")
 
         layout = QVBoxLayout()
         self.labels = {}
         for name in DASHBOARD_COMMANDS:
             label = QLabel("%s: -" % name)
             label.setStyleSheet("font-size: 32px;")
+            label.setAlignment(Qt.AlignCenter)
             layout.addWidget(label)
             self.labels[name] = label
         self.setLayout(layout)
@@ -40,31 +54,43 @@ class ObdWindow(QWidget):
         self.update_values()
 
     def update_values(self):
-        values = read_values(self.connection, self.commands)
+        values = MOCK_VALUES if mock else read_values(self.connection, self.commands)
         for name, value in values.items():
             self.labels[name].setText("%s: %s" % (name, value))
 
     def closeEvent(self, event):
-        self.connection.close()
+        if self.connection:
+            self.connection.close()
         event.accept()
+
+
+def show_on_hdmi(app, window):
+    screen = app.primaryScreen()
+    for item in app.screens():
+        if "HDMI" in item.name().upper():
+            screen = item
+            break
+
+    window.setGeometry(screen.geometry())
+    window.showFullScreen()
 
 
 def main():
     args = parse_args()
-    connection = connect(args.port)
-
-    if connection.status() == obd.OBDStatus.NOT_CONNECTED:
-        print("Could not connect to ELM327")
-        return 1
-
     app = QApplication(sys.argv)
-    window = ObdWindow(
-        connection,
-        get_commands(connection, DASHBOARD_COMMANDS),
-        args.interval,
-    )
-    window.resize(480, 360)
-    window.show()
+
+    connection = None
+    commands = []
+
+    if not mock:
+        connection = connect(args.port)
+        if connection.status() == obd.OBDStatus.NOT_CONNECTED:
+            print("Could not connect to ELM327")
+            return 1
+        commands = get_commands(connection, DASHBOARD_COMMANDS)
+
+    window = ObdWindow(connection, commands, args.interval)
+    show_on_hdmi(app, window)
     return app.exec_()
 
 
