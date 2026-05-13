@@ -34,14 +34,14 @@ FAST_COMMANDS = [
 
 ]
 
-UI_REFRESH_MS = 100
+UI_REFRESH_MS = 200
 RETRY_INTERVAL_S = 10.0
 SLOW_COMMANDS = {
-    # "THROTTLE_POS": 0.3,
-    # "ENGINE_LOAD": 0.3,
+    "THROTTLE_POS": 0.3,
+    "ENGINE_LOAD": 0.3,
     "COOLANT_TEMP": 10.0,
     "INTAKE_TEMP": 10.0,
-    # "INTAKE_PRESSURE": 1.0,
+    "INTAKE_PRESSURE": 0.3,
     "STATUS": 10.0,
 }
 
@@ -50,24 +50,16 @@ PRIMARY_COMMANDS = [
     "SPEED",
     "RPM",
 ]
-SECONDARY_COMMANDS = [
-    "TIMING_ADVANCE",
-    "THROTTLE_POS",
-]
-PRIMARY_COLUMNS = [
-    "RPM",
-    "SPEED",
-]
 
 MOCK_VALUES = {
     "RPM": "1805 revolutions_per_minute",
     "SPEED": "40 kilometer_per_hour",
     "TIMING_ADVANCE": "2.0 degree",
     "COOLANT_TEMP": "89 degree_Celsius",
-    # "THROTTLE_POS": "55 percent",
-    # "ENGINE_LOAD": "38 percent",
+    "THROTTLE_POS": "55 percent",
+    "ENGINE_LOAD": "38 percent",
     "INTAKE_TEMP": "70 degree_Celsius",
-    # "INTAKE_PRESSURE": "48 kilopascal",
+    "INTAKE_PRESSURE": "48 kilopascal",
     "STATUS": "MIL=False DTC=0 ignition=spark",
 }
 
@@ -275,14 +267,14 @@ class ObdWindow(QWidget):
 
         primary_layout = QHBoxLayout()
         primary_layout.setSpacing(14)
-        for name in PRIMARY_COLUMNS:
+        for name in PRIMARY_COMMANDS:
             primary_layout.addWidget(self.make_primary_panel(name))
         layout.addLayout(primary_layout, 3)
 
         data_grid = QGridLayout()
         data_grid.setHorizontalSpacing(10)
         data_grid.setVerticalSpacing(10)
-        bottom_commands = [name for name in ALL_COMMANDS if name not in PRIMARY_COLUMNS]
+        bottom_commands = [name for name in ALL_COMMANDS if name not in PRIMARY_COMMANDS]
         for index, name in enumerate(bottom_commands):
             data_grid.addWidget(self.make_data_panel(name), index // 3, index % 3)
         layout.addLayout(data_grid, 2)
@@ -318,7 +310,7 @@ class ObdWindow(QWidget):
 
         value = QLabel("-")
         value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        value.setStyleSheet("font-size: 92px; color: #f8fafc; font-weight: bold; border: 0;")
+        value.setStyleSheet("font-size: 108px; color: #f8fafc; font-weight: bold; border: 0;")
         layout.addWidget(value, 1)
 
         frame.setLayout(layout)
@@ -345,10 +337,7 @@ class ObdWindow(QWidget):
 
         value = QLabel("-")
         value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        if name in SECONDARY_COMMANDS:
-            value.setStyleSheet("font-size: 28px; color: #e2e8f0; font-weight: bold; border: 0;")
-        else:
-            value.setStyleSheet("font-size: 20px; color: #e2e8f0; border: 0;")
+        value.setStyleSheet("font-size: 20px; color: #e2e8f0; border: 0;")
         value.setWordWrap(True)
         layout.addWidget(value, 1)
 
