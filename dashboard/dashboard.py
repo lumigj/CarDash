@@ -11,8 +11,6 @@ with basic features contains \n
     8) Left and right indicator. \n
     9) You can control the above states by using several function provided in 'TriggerAction' class.\n\n
 Some cool features: \n
-    1) Start page with start button and creator info button. Note: you can hide creator info button
-       by using hide_creator_button() method in 'TriggerAction' class. \n
     3) dashboard popup animation. \n
     4) you can also embed this dashboard with your own application created using PyQt by using
        'DashBoard' class.
@@ -41,7 +39,7 @@ _dash_board = None
 class _DashBoardMain(QWidget):
     """WARNING: This is a private class. do not import this."""
 
-    def __init__(self, parent, size: tuple | list = (1280, 720), hide_creator_button: bool = False, do_not_move: bool = False):
+    def __init__(self, parent, size: tuple | list = (1280, 720), do_not_move: bool = False):
         super().__init__()
         # Setting window to no icon, frameless and transparent
         self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
@@ -50,7 +48,6 @@ class _DashBoardMain(QWidget):
         self.setFixedSize(*size)
 
         self.oldPos = QCursor().pos()
-        self.hide_creator_button = hide_creator_button
         self.do_not_move = do_not_move
 
         self.initUI()
@@ -78,9 +75,6 @@ class _DashBoardMain(QWidget):
         self.swidget.setFixedSize(self.width(), self.height())
         self.swidget.setCurrentIndex(0)
 
-    def creator_info_button_action(self):
-        self.creator_label_ani.setDirection(not self.creator_label_ani.direction())
-        self.creator_label_ani.start()
 
 
     def dash_board_design(self):
@@ -725,7 +719,6 @@ class _DashBoardControls(QObject):
                       Qt.Key.Key_Right: False, Qt.Key.Key_Space: False, Qt.Key.Key_Escape: False}
         self.dashboard_height = 720
         self.dashboard_width = 1280
-        self.creator_btn_hide = False
         self.speedometer_topspeed = 200
         self.battery_level = 100
         self.charging_state = 0  # off
@@ -738,7 +731,7 @@ class _DashBoardControls(QObject):
 
     def launch_dashboard(self):
         app = QApplication(sys.argv)
-        self.dash_board = _DashBoardMain(None, (self.dashboard_width, self.dashboard_height), self.creator_btn_hide)
+        self.dash_board = _DashBoardMain(None, (self.dashboard_width, self.dashboard_height))
         self.startup_values_setter()
         if __name__ == "__main__":  # for install default key event if dashboard called in main thread
             self.dash_board.installEventFilter(self.dash_board)
@@ -759,9 +752,6 @@ class _DashBoardControls(QObject):
     def set_dashboard_size(self, width, height):
         self.dashboard_height = height
         self.dashboard_width = width
-
-    def hide_creator_button(self, hide):
-        self.creator_btn_hide = hide
 
     def set_speedometer_range(self, top_speed):
         self.speedometer_topspeed = top_speed
@@ -811,11 +801,11 @@ class DashBoard(QWidget):
         self.vlayout = QVBoxLayout()
         self.setLayout(self.vlayout)
 
-    def show_dashboard(self, hide_creator_button: bool = False):
+    def show_dashboard(self):
         """This method is to show the dashboard in your window"""
         global _dash_board
 
-        self.dash_board_widget = _DashBoardMain(self, (self.width(), self.height()), hide_creator_button, True)
+        self.dash_board_widget = _DashBoardMain(self, (self.width(), self.height()), True)
         self.dash_board_widget.move(0, 0)
         self.vlayout.addWidget(self.dash_board_widget)
 
@@ -838,11 +828,6 @@ class TriggerAction():
             be called before you call launch_dashboard() method to take effect"""
         if height is not None and width is not None:
             self.__dbc.set_dashboard_size(width, height)
-
-    def hide_creator_button(self, hide: bool):
-        """To hide creator button on start screen \n note: this method should \
-            be called before you call launch_dashboard() method to take effect"""
-        self.__dbc.hide_creator_button(hide)
 
     def set_speedometer_range(self, top_speed: int):
         """Set speedometer range (i.e.) 0 to top speed \n

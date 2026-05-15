@@ -9,7 +9,6 @@ trigger_action = TriggerAction()  # creating dashboard trigger
 # the below five method should be called before calling launch_dashboard() method to take effect
 # note: this below five are optional
 trigger_action.set_dashboard_size(1366, 768)  # aspect ratio 16:9
-trigger_action.hide_creator_button(False)
 trigger_action.set_speedometer_range(240)
 
 def CustomkeyboardEvent(event):
