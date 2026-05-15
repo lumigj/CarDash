@@ -20,6 +20,10 @@ BACKGROUND_COLOR = "#000000"
 ANIMATION_INTERVAL_MS = 30
 ANIMATION_EASING = 0.18
 ANIMATION_MIN_STEP = 0.2
+RPM_SIZE_RATIO = 0.8
+RPM_OVERLAP_RATIO = 0.317
+DIAL_GROUP_ASPECT_RATIO = 1 + RPM_SIZE_RATIO - RPM_SIZE_RATIO * RPM_OVERLAP_RATIO
+DIAL_SAFE_PADDING_RATIO = 0.05
 
 
 class _DashBoardMain(QWidget):
@@ -30,7 +34,7 @@ class _DashBoardMain(QWidget):
         if parent is None:
             self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setAutoFillBackground(True)
+        self.setAutoFillBackground(False)
         self.setContentsMargins(0, 0, 0, 0)
         self.setFixedSize(*size)
 
@@ -46,9 +50,9 @@ class _DashBoardMain(QWidget):
         self.swidget = QStackedWidget(self)
         self.swidget.setContentsMargins(0, 0, 0, 0)
         self.swidget.setStyleSheet(
-            "background-color: %s; border: 0; margin: 0; padding: 0;" % BACKGROUND_COLOR
+            "background-color: transparent; border: 0; margin: 0; padding: 0;"
         )
-        self.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
+        self.setStyleSheet("background-color: transparent; border: 0;")
         self.swidget.setFixedSize(self.width(), self.height())
         self.swidget.setCurrentIndex(0)
 
@@ -81,8 +85,13 @@ class _DashBoardContolsDesign(QWidget):
         return round(self.display_speed)
 
     def speedometer_properties(self):
-        self.speedometer_bounding_rect = QRectF(self.width() * 0.02, self.height() * 0.02, self.width() * 0.6,
-                                                self.width() * 0.6)
+        safe_padding = min(self.width(), self.height()) * DIAL_SAFE_PADDING_RATIO
+        available_width = self.width() - safe_padding * 2
+        available_height = self.height() - safe_padding * 2
+        speedometer_size = min(available_height, available_width / DIAL_GROUP_ASPECT_RATIO)
+        left = (self.width() - speedometer_size * DIAL_GROUP_ASPECT_RATIO) / 2
+        top = (self.height() - speedometer_size) / 2
+        self.speedometer_bounding_rect = QRectF(left, top, speedometer_size, speedometer_size)
 
         self.speed_range = 200
         self.speed_angle_factor = self.speed_range / 300
@@ -265,8 +274,9 @@ class _DashBoardContolsDesign(QWidget):
     def tachometer_painting(self, painter):
         rpm_bounding_rect = self.speedometer_bounding_rect.toRect()
         rpm_bounding_rect.setSize(
-            QSizeF(rpm_bounding_rect.width() * 0.8, rpm_bounding_rect.width() * 0.8).toSize())
-        rpm_overlap = round(rpm_bounding_rect.width() * 0.317)
+            QSizeF(rpm_bounding_rect.width() * RPM_SIZE_RATIO,
+                   rpm_bounding_rect.width() * RPM_SIZE_RATIO).toSize())
+        rpm_overlap = round(rpm_bounding_rect.width() * RPM_OVERLAP_RATIO)
         rpm_bounding_rect.moveBottomLeft(
             self.speedometer_bounding_rect.toRect().bottomRight() - QPoint(rpm_overlap, 0))
 
@@ -378,8 +388,6 @@ class _DashBoardContolsDesign(QWidget):
         painter = QPainter(self)
         painter.setRenderHints(_RENDER_HINTS, True)
 
-        painter.fillRect(self.rect(), QColor(BACKGROUND_COLOR))
-
         self.speedometer_painting(painter)
         self.tachometer_painting(painter)
 
@@ -449,7 +457,7 @@ class DashBoard(QWidget):
         self.vlayout.setContentsMargins(0, 0, 0, 0)
         self.vlayout.setSpacing(0)
         self.setLayout(self.vlayout)
-        self.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
+        self.setStyleSheet("background-color: transparent; border: 0;")
 
     def show_dashboard(self):
         """This method is to show the dashboard in your window"""
