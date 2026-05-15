@@ -30,10 +30,10 @@ from obd_logger import connect, get_commands, simple_value
 
 is_mock = False
 BACKGROUND_COLOR = "#000000"
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
-DASHBOARD_WIDTH = 900
-DASHBOARD_HEIGHT = 600
+BASE_WINDOW_WIDTH = 1280
+BASE_WINDOW_HEIGHT = 720
+BASE_DASHBOARD_WIDTH = 900
+BASE_DASHBOARD_HEIGHT = 600
 DEFAULT_PORTS = [
     "/dev/ttyUSB0",
     "/dev/ttyUSB1",
@@ -124,6 +124,17 @@ def numeric_value(value):
 
 def clamped_numeric_value(value, minimum, maximum):
     return max(minimum, min(maximum, numeric_value(value)))
+
+
+def fit_16_9_size(width, height):
+    fitted_height = round(width * 9 / 16)
+    if fitted_height <= height:
+        return width, fitted_height
+    return round(height * 16 / 9), height
+
+
+def scaled(value, scale):
+    return max(1, round(value * scale))
 
 
 class QueryThread(QThread):
@@ -277,7 +288,7 @@ class QueryThread(QThread):
 
 
 class ProgressMetric(QFrame):
-    def __init__(self, title):
+    def __init__(self, title, scale=1.0):
         super().__init__()
         self.setStyleSheet(
             "QFrame { background-color: #000000; border: 1px solid #202020; border-radius: 8px; }"
@@ -286,21 +297,33 @@ class ProgressMetric(QFrame):
             "background-color: #111111;"
             "border: 1px solid #303030;"
             "border-radius: 5px;"
-            "height: 16px;"
+            "height: %dpx;"
             "}"
             "QProgressBar::chunk { background-color: #38bdf8; border-radius: 5px; }"
+            % scaled(16, scale)
         )
         layout = QVBoxLayout()
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(8)
+        layout.setContentsMargins(
+            scaled(12, scale),
+            scaled(10, scale),
+            scaled(12, scale),
+            scaled(10, scale),
+        )
+        layout.setSpacing(scaled(8, scale))
 
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 15px; color: #94a3b8; font-weight: bold;")
+        title_label.setStyleSheet(
+            "font-size: %dpx; color: #94a3b8; font-weight: bold;"
+            % scaled(15, scale)
+        )
         layout.addWidget(title_label)
 
         self.value_label = QLabel("-")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.value_label.setStyleSheet("font-size: 24px; color: #e2e8f0; font-weight: bold;")
+        self.value_label.setStyleSheet(
+            "font-size: %dpx; color: #e2e8f0; font-weight: bold;"
+            % scaled(24, scale)
+        )
         layout.addWidget(self.value_label)
 
         self.bar = QProgressBar()
@@ -316,11 +339,11 @@ class ProgressMetric(QFrame):
 
 
 class TemperatureMetric(QFrame):
-    def __init__(self, title):
+    def __init__(self, title, scale=1.0):
         super().__init__()
         self.minimum_temp = 40
         self.maximum_temp = 120
-        self.setFixedWidth(150)
+        self.setFixedWidth(scaled(150, scale))
         self.setStyleSheet(
             "QFrame { background-color: #000000; border: 1px solid #202020; border-radius: 8px; }"
             "QLabel { border: 0; }"
@@ -328,22 +351,31 @@ class TemperatureMetric(QFrame):
             "background-color: #111111;"
             "border: 1px solid #303030;"
             "border-radius: 7px;"
-            "width: 18px;"
+            "width: %dpx;"
             "}"
             "QProgressBar::chunk { background-color: #ef4444; border-radius: 7px; }"
+            % scaled(18, scale)
         )
         layout = QVBoxLayout()
-        layout.setContentsMargins(8, 10, 8, 10)
-        layout.setSpacing(6)
+        layout.setContentsMargins(
+            scaled(8, scale),
+            scaled(10, scale),
+            scaled(8, scale),
+            scaled(10, scale),
+        )
+        layout.setSpacing(scaled(6, scale))
 
         title_label = QLabel(title)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("font-size: 15px; color: #94a3b8; font-weight: bold;")
+        title_label.setStyleSheet(
+            "font-size: %dpx; color: #94a3b8; font-weight: bold;"
+            % scaled(15, scale)
+        )
         layout.addWidget(title_label)
 
         body_layout = QHBoxLayout()
         body_layout.setContentsMargins(0, 0, 0, 0)
-        body_layout.setSpacing(6)
+        body_layout.setSpacing(scaled(6, scale))
 
         self.bar = QProgressBar()
         self.bar.setOrientation(Qt.Orientation.Vertical)
@@ -352,7 +384,10 @@ class TemperatureMetric(QFrame):
         body_layout.addWidget(self.bar, 0, Qt.AlignmentFlag.AlignCenter)
 
         self.value_label = QLabel("-")
-        self.value_label.setStyleSheet("font-size: 24px; color: #e2e8f0; font-weight: bold;")
+        self.value_label.setStyleSheet(
+            "font-size: %dpx; color: #e2e8f0; font-weight: bold;"
+            % scaled(24, scale)
+        )
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         body_layout.addWidget(self.value_label, 0, Qt.AlignmentFlag.AlignVCenter)
 
@@ -365,22 +400,34 @@ class TemperatureMetric(QFrame):
 
 
 class ObdWindow(QWidget):
-    def __init__(self, query_thread):
+    def __init__(self, query_thread, window_size):
         super().__init__()
         self.query_thread = query_thread
         self.latest_values = {name: "-" for name in ALL_COMMANDS}
         self.status = "STARTING"
+        self.window_width, self.window_height = window_size
+        self.scale = min(
+            self.window_width / BASE_WINDOW_WIDTH,
+            self.window_height / BASE_WINDOW_HEIGHT,
+        )
 
         self.setWindowTitle("OBD Dashboard")
-        self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.resize(self.window_width, self.window_height)
         self.setStyleSheet("background-color: %s; color: white;" % BACKGROUND_COLOR)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(18, 12, 18, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(
+            scaled(18, self.scale),
+            scaled(12, self.scale),
+            scaled(18, self.scale),
+            scaled(14, self.scale),
+        )
+        layout.setSpacing(scaled(10, self.scale))
 
         self.status_label = QLabel(self.status)
-        self.status_label.setStyleSheet("font-size: 18px; color: #ff6b6b;")
+        self.status_label.setStyleSheet(
+            "font-size: %dpx; color: #ff6b6b;" % scaled(18, self.scale)
+        )
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.status_label)
 
@@ -388,28 +435,31 @@ class ObdWindow(QWidget):
         self.progress_metrics = {}
 
         dashboard_row = QHBoxLayout()
-        dashboard_row.setContentsMargins(20, 0, 0, 0)
-        dashboard_row.setSpacing(16)
+        dashboard_row.setContentsMargins(scaled(20, self.scale), 0, 0, 0)
+        dashboard_row.setSpacing(scaled(16, self.scale))
         self.dashboard_widget = DashBoard(self)
-        self.dashboard_widget.setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT)
+        self.dashboard_widget.setFixedSize(
+            scaled(BASE_DASHBOARD_WIDTH, self.scale),
+            scaled(BASE_DASHBOARD_HEIGHT, self.scale),
+        )
         self.dashboard_widget.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
         self.dashboard_widget.show_dashboard()
         dashboard_row.addWidget(self.dashboard_widget, 0, Qt.AlignmentFlag.AlignRight)
 
         right_metrics = QVBoxLayout()
-        right_metrics.setContentsMargins(0, 20, 0, 20)
-        right_metrics.setSpacing(12)
-        self.progress_metrics["THROTTLE_POS"] = ProgressMetric("THROTTLE POS")
-        self.progress_metrics["ENGINE_LOAD"] = ProgressMetric("ENGINE LOAD")
-        self.progress_metrics["COOLANT_TEMP"] = TemperatureMetric("COOLANT TEMP")
+        right_metrics.setContentsMargins(0, scaled(20, self.scale), 0, scaled(20, self.scale))
+        right_metrics.setSpacing(scaled(12, self.scale))
+        self.progress_metrics["THROTTLE_POS"] = ProgressMetric("THROTTLE POS", self.scale)
+        self.progress_metrics["ENGINE_LOAD"] = ProgressMetric("ENGINE LOAD", self.scale)
+        self.progress_metrics["COOLANT_TEMP"] = TemperatureMetric("COOLANT TEMP", self.scale)
         for name in RIGHT_SIDE_COMMANDS:
             right_metrics.addWidget(self.progress_metrics[name])
         dashboard_row.addLayout(right_metrics)
         layout.addLayout(dashboard_row, 1)
 
         data_grid = QGridLayout()
-        data_grid.setHorizontalSpacing(10)
-        data_grid.setVerticalSpacing(10)
+        data_grid.setHorizontalSpacing(scaled(10, self.scale))
+        data_grid.setVerticalSpacing(scaled(10, self.scale))
         bottom_commands = [
             name
             for name in ALL_COMMANDS
@@ -441,17 +491,27 @@ class ObdWindow(QWidget):
             "}" % BACKGROUND_COLOR
         )
         layout = QVBoxLayout()
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(
+            scaled(12, self.scale),
+            scaled(8, self.scale),
+            scaled(12, self.scale),
+            scaled(8, self.scale),
+        )
+        layout.setSpacing(scaled(4, self.scale))
 
         title = QLabel(display_name(name))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 15px; color: #94a3b8; font-weight: bold; border: 0;")
+        title.setStyleSheet(
+            "font-size: %dpx; color: #94a3b8; font-weight: bold; border: 0;"
+            % scaled(15, self.scale)
+        )
         layout.addWidget(title)
 
         value = QLabel("-")
         value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        value.setStyleSheet("font-size: 20px; color: #e2e8f0; border: 0;")
+        value.setStyleSheet(
+            "font-size: %dpx; color: #e2e8f0; border: 0;" % scaled(20, self.scale)
+        )
         value.setWordWrap(True)
         layout.addWidget(value, 1)
 
@@ -502,8 +562,11 @@ def main():
     threading.current_thread().name = "ui thread"
     QThread.currentThread().setObjectName("ui thread")
 
+    screen = app.primaryScreen().geometry()
+    window_size = fit_16_9_size(screen.width(), screen.height())
+
     query_thread = QueryThread(args.port)
-    window = ObdWindow(query_thread)
+    window = ObdWindow(query_thread, window_size)
 
     if is_mock and not is_mf:
         window.show()
