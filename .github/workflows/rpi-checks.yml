@@ -39,7 +39,7 @@ jobs:
             echo "No tests directory; skipping pytest."
           fi
 
-      - name: Start dashboard in mock mode
+      - name: Start obd_interface in mock mode
         run: |
           . "$VENV_PATH/bin/activate"
           set +e
