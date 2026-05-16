@@ -43,22 +43,19 @@ FAST_COMMANDS = [
     "RPM",
     "SPEED",
     "TIMING_ADVANCE",
+    "THROTTLE_POS",
+    "ENGINE_LOAD",
 
 ]
 
-UI_REFRESH_MS = 300 # UI_REFRESH_MS 是数据同步频率，DASHBOARD_ANIMATION_INTERVAL_MS 是动画帧率
-DASHBOARD_ANIMATION_INTERVAL_MS = 30
-GAUGE_ANIMATION_EASING = 0.2
-GAUGE_ANIMATION_MIN_STEP = 0.2
+UI_REFRESH_MS = 300
 RETRY_INTERVAL_S = 10.0
 SLOW_COMMANDS = {
-    "THROTTLE_POS": 0.3,
-    "ENGINE_LOAD": 0.3,
-    "INTAKE_PRESSURE": 0.3,
+    # "INTAKE_PRESSURE": 0.3,
     "INTAKE_TEMP": 15.0,
     "COOLANT_TEMP": 15.0,
     "STATUS": 20.0,
-    "SHORT_FUEL_TRIM_1": 0.3,
+    # "SHORT_FUEL_TRIM_1": 0.3,
     "LONG_FUEL_TRIM_1": 36.0,
 }
 
@@ -76,9 +73,9 @@ DIRECT_GAUGE_COMMANDS = [
     "COOLANT_TEMP",
 ]
 RIGHT_INFO_COMMANDS = [
-    "INTAKE_PRESSURE",
+    # "INTAKE_PRESSURE",
     "INTAKE_TEMP",
-    "SHORT_FUEL_TRIM_1",
+    # "SHORT_FUEL_TRIM_1",
     "LONG_FUEL_TRIM_1",
     "STATUS",
 ]
@@ -389,12 +386,9 @@ class GaugeBar(QWidget):
 
 
 class GaugeMetric(QFrame):
-    def __init__(self, name, scale, animated=True):
+    def __init__(self, name, scale):
         super().__init__()
         self.name = name
-        self.animated = animated
-        self.target_value = 0
-        self.display_value = 0
         self.setFixedWidth(scaled(220, scale))
         self.setStyleSheet(
             "QFrame { background-color: #050505; border: 1px solid #181818; border-radius: 4px; }"
@@ -432,39 +426,17 @@ class GaugeMetric(QFrame):
         layout.addWidget(self.bar)
         self.setLayout(layout)
 
-        if self.animated:
-            self.animation_timer = QTimer(self)
-            self.animation_timer.timeout.connect(self.update_display_value)
-            self.animation_timer.start(DASHBOARD_ANIMATION_INTERVAL_MS)
-
     def set_value(self, value):
-        self.target_value = gauge_value(self.name, value)
-        if not self.animated:
-            self.display_value = self.target_value
-            self.value_label.setText(self.display_text())
-            self.bar.set_value(self.display_value)
+        value = gauge_value(self.name, value)
+        self.value_label.setText(self.display_text(value))
+        self.bar.set_value(value)
 
-    def update_display_value(self):
-        next_value = self.approach_display_value(self.display_value, self.target_value)
-        if next_value == self.display_value:
-            return
-
-        self.display_value = next_value
-        self.value_label.setText(self.display_text())
-        self.bar.set_value(self.display_value)
-
-    def approach_display_value(self, current, target):
-        diff = target - current
-        if abs(diff) <= GAUGE_ANIMATION_MIN_STEP:
-            return target
-        return current + diff * GAUGE_ANIMATION_EASING
-
-    def display_text(self):
+    def display_text(self, value):
         if self.name == "TIMING_ADVANCE":
-            return "%.1f deg" % self.display_value
+            return "%.1f deg" % value
         if self.name == "COOLANT_TEMP":
-            return "%d C" % round(self.display_value)
-        return "%d%%" % round(self.display_value)
+            return "%d C" % round(value)
+        return "%d%%" % round(value)
 
 
 class InfoMetric(QFrame):
@@ -552,7 +524,6 @@ class ObdWindow(QWidget):
             self.dashboard_height,
         )
         self.dashboard_widget.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
-        self.dashboard_widget.set_animation_interval_ms(DASHBOARD_ANIMATION_INTERVAL_MS)
         self.dashboard_widget.show_dashboard()
         dashboard_row.addWidget(self.dashboard_widget, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
@@ -563,7 +534,7 @@ class ObdWindow(QWidget):
             self.gauge_metrics[name] = GaugeMetric(name, self.scale)
             right_metrics.addWidget(self.gauge_metrics[name])
         for name in DIRECT_GAUGE_COMMANDS:
-            self.gauge_metrics[name] = GaugeMetric(name, self.scale, animated=False)
+            self.gauge_metrics[name] = GaugeMetric(name, self.scale)
             right_metrics.addWidget(self.gauge_metrics[name])
         for name in RIGHT_INFO_COMMANDS:
             self.info_metrics[name] = InfoMetric(name, self.scale)
