@@ -4,6 +4,11 @@ Reads live data from car.
 
 ## Setup
 
+RPi one liner find avail addr
+```bash
+subnet=$(ip route | awk '/src/ && $1 ~ /^[0-9]+\./ && $1 != "default" {print $1; exit}'); nmap -p 22 --open "$subnet" | awk '/Nmap scan report/{print $NF}'
+```
+
 ### Enable Desktop Boot
 
 On the Pi:
