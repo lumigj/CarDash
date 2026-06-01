@@ -246,3 +246,54 @@ sudo ./svc.sh status
 ```
 
 That helper is not currently present in this repo. The supported startup path documented here is the Raspberry Pi desktop autostart file.
+
+For an external Raspberry Pi GitHub Actions self-hosted runner installed as a systemd service, make the runner wait for networking and restart if Wi-Fi or DNS is still not ready.
+
+Find the generated runner service name:
+
+```bash
+systemctl list-unit-files 'actions.runner*.service'
+```
+
+Edit the service override, replacing the placeholder with the real service name:
+
+```bash
+sudo systemctl edit actions.runner.<owner-repo>.<runner-name>.service
+```
+
+Add:
+
+```ini
+[Unit]
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Restart=always
+RestartSec=30s
+```
+
+Reload systemd and restart the runner:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart actions.runner.<owner-repo>.<runner-name>.service
+```
+
+Enable the network wait service. On newer Raspberry Pi OS using NetworkManager:
+
+```bash
+sudo systemctl enable NetworkManager-wait-online.service
+```
+
+If the Pi uses `systemd-networkd` instead:
+
+```bash
+sudo systemctl enable systemd-networkd-wait-online.service
+```
+
+After reboot, inspect the service logs:
+
+```bash
+journalctl -u actions.runner.<owner-repo>.<runner-name>.service -b
+```
