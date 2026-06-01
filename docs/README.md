@@ -62,3 +62,32 @@ The app starts in live OBD mode by default. If no port is given, it tries:
 If neither port connects, the UI stays open, shows a retry countdown, and retries every 10 seconds.
 
 If `--port` is given, it retries only that port.
+
+## Reverse Camera
+
+The app also watches Raspberry Pi GPIO `17` for the reverse signal described in
+`docs/reverse_camera_trigger.md`.
+
+- `GPIO HIGH`: normal dashboard
+- `GPIO LOW`: backup camera view
+
+The camera view uses Picamera2 in live mode.
+
+## Mock Mode
+
+Run the UI without OBD, camera, or GPIO hardware:
+
+```bash
+python scripts/obd_interface.py --mock
+```
+
+While the mocked UI is running, type one of these in the same terminal:
+
+- `R` + Enter: reverse camera mode
+- `N` + Enter: normal dashboard mode
+
+Start directly in mocked reverse-camera mode:
+
+```bash
+python scripts/obd_interface.py --mock R
+```

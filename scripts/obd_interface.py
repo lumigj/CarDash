@@ -3,6 +3,7 @@
 import argparse
 from collections import deque
 from pathlib import Path
+import signal
 import sys
 import threading
 import time
@@ -19,15 +20,19 @@ from PyQt5.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from dashboard.camera_view import CameraView
 from dashboard.dashboard import DashBoard
 from obd_logger import connect, get_commands, simple_value
+from scripts.reverse_gpio import ReverseGearMonitor
 
 
 is_mock = False
+mock_reverse = False
 BACKGROUND_COLOR = "#000000"
 BASE_WINDOW_WIDTH = 1280
 BASE_WINDOW_HEIGHT = 720
@@ -106,13 +111,37 @@ MOCK_VALUES = {
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mock", action="store_true", help="Use mock dashboard values")
+    parser.add_argument(
+        "--mock",
+        nargs="?",
+        const="",
+        metavar="STATE",
+        help="Use mock dashboard and camera. Pass R to start in reverse camera mode.",
+    )
     parser.add_argument("--port", help="ELM327 port, for example /dev/ttyUSB0")
     parser.add_argument("--mockfull", action="store_true")
     args = parser.parse_args()
-    if args.mock and args.port:
+    if args.mock is not None and args.mockfull:
+        parser.error("--mock and --mockfull cannot be used together")
+    if args.mock is not None and args.port:
         parser.error("--mock cannot be used with --port")
+    if args.mockfull and args.port:
+        parser.error("--mockfull cannot be used with --port")
+    args.mock_reverse = parse_mock_reverse(args.mock, parser)
     return args
+
+
+def parse_mock_reverse(value, parser):
+    if value is None:
+        return False
+
+    token = value.strip().upper()
+    if token in ("", "N"):
+        return False
+    if token == "R":
+        return True
+
+    parser.error("--mock only accepts R to start in reverse camera mode")
 
 
 def compact_value(name, value):
@@ -511,7 +540,8 @@ class ObdWindow(QWidget):
         super().__init__()
         self.query_thread = query_thread
         self.latest_values = {name: "-" for name in ALL_COMMANDS}
-        self.status = "STARTING"
+        self.obd_status = "STARTING"
+        self.is_reverse = False
         self.window_width, self.window_height = window_size
         self.scale = min(
             self.window_width / BASE_WINDOW_WIDTH,
@@ -532,17 +562,20 @@ class ObdWindow(QWidget):
         )
         layout.setSpacing(scaled(3, self.scale))
 
-        self.status_label = QLabel(self.status)
+        self.status_label = QLabel(self.status_text())
         self.status_label.setStyleSheet(
             "font-size: %dpx; color: #ff6b6b;" % scaled(16, self.scale)
         )
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.status_label)
 
-        self.labels = {}
         self.gauge_metrics = {}
         self.info_metrics = {}
+        self.stack = QStackedWidget()
+        self.stack.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
 
+        self.dashboard_page = QWidget()
+        self.dashboard_page.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
         dashboard_row = QHBoxLayout()
         dashboard_row.setContentsMargins(0, 0, 0, 0)
         dashboard_row.setSpacing(scaled(6, self.scale))
@@ -571,7 +604,12 @@ class ObdWindow(QWidget):
         right_metrics.addStretch(1)
         dashboard_row.addLayout(right_metrics)
         dashboard_row.addStretch(1)
-        layout.addLayout(dashboard_row, 1)
+        self.dashboard_page.setLayout(dashboard_row)
+
+        self.camera_page = CameraView(self.scale, mock=is_mock)
+        self.stack.addWidget(self.dashboard_page)
+        self.stack.addWidget(self.camera_page)
+        layout.addWidget(self.stack, 1)
 
         self.setLayout(layout)
 
@@ -579,20 +617,41 @@ class ObdWindow(QWidget):
         self.query_thread.status_changed.connect(self.save_status)
         self.query_thread.start()
 
+        self.reverse_monitor = ReverseGearMonitor(
+            mock=is_mock,
+            initial_reverse=mock_reverse,
+        )
+        self.reverse_monitor.reverse_changed.connect(self.set_reverse_mode)
+        self.reverse_monitor.start()
+
         self.ui_timer = QTimer(self)
         self.ui_timer.setObjectName("ui thread refresh timer")
         self.ui_timer.timeout.connect(self.update_values)
         self.ui_timer.start(UI_REFRESH_MS)
         self.update_values()
 
+    def status_text(self):
+        if self.is_reverse:
+            return "REVERSE CAMERA | %s" % self.obd_status
+        return self.obd_status
+
     def save_latest_values(self, values):
         self.latest_values.update(values)
 
     def save_status(self, status):
-        self.status = status
+        self.obd_status = status
+
+    def set_reverse_mode(self, is_reverse):
+        self.is_reverse = is_reverse
+        self.camera_page.set_reverse_state(is_reverse)
+        if is_reverse:
+            self.stack.setCurrentWidget(self.camera_page)
+        else:
+            self.stack.setCurrentWidget(self.dashboard_page)
+        self.status_label.setText(self.status_text())
 
     def update_values(self):
-        self.status_label.setText(self.status)
+        self.status_label.setText(self.status_text())
         self.dashboard_widget.set_values(
             numeric_value(self.latest_values["SPEED"]),
             numeric_value(self.latest_values["RPM"]),
@@ -603,23 +662,30 @@ class ObdWindow(QWidget):
             self.info_metrics[name].set_value(self.latest_values[name])
 
     def closeEvent(self, event):
+        self.reverse_monitor.stop()
+        self.camera_page.stop()
         self.query_thread.stop()
         self.query_thread.wait()
         event.accept()
 
 
 def main():
-    global is_mock
+    global is_mock, mock_reverse
 
     args = parse_args()
     is_mf = args.mockfull
     is_mock = is_mf
     if not is_mock:
-        is_mock = args.mock
+        is_mock = args.mock is not None
+    mock_reverse = args.mock_reverse
 
     app = QApplication(sys.argv)
     threading.current_thread().name = "ui thread"
     QThread.currentThread().setObjectName("ui thread")
+    signal.signal(signal.SIGINT, lambda *_: app.quit())
+    app.signal_timer = QTimer()
+    app.signal_timer.timeout.connect(lambda: None)
+    app.signal_timer.start(200)
 
     screen = app.primaryScreen().geometry()
     window_size = fit_16_9_size(screen.width(), screen.height())
