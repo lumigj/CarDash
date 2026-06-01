@@ -7,12 +7,16 @@ BRANCH="main"
 
 cd "$REPO_DIR"
 
-for _ in {1..24}; do
-    if git fetch origin "$BRANCH" && git reset --hard "origin/$BRANCH"; then
-        break
+timeout 30s bash -c '
+branch="$1"
+
+while true; do
+    if git fetch origin "$branch" && git reset --hard "origin/$branch"; then
+        exit 0
     fi
 
     sleep 5
 done
+' bash "$BRANCH" || true
 
 exec "$REPO_DIR/.venv/bin/python" "$REPO_DIR/scripts/obd_interface.py"
