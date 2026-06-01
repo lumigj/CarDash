@@ -38,3 +38,37 @@ Created a root README for the CarDash OBD dashboard and backup-camera project, c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 2: Runner and dashboard startup automation
+
+**Date**: 2026-06-01
+**Task**: Runner and dashboard startup automation
+**Branch**: `main`
+
+### Summary
+
+Documented the Raspberry Pi GitHub runner network-online systemd override, added a dashboard startup wrapper that refreshes from origin/main before launch, and updated the README autostart entry.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `063c633` | (see git log) |
+| `807d62b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
