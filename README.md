@@ -7,6 +7,7 @@ CarDash is a custom Raspberry Pi car dashboard. It reads live OBD-II data from a
 - `scripts/obd_interface.py`: main dashboard app.
 - `scripts/obd_logger.py`: standalone OBD-II CSV logger.
 - `scripts/reverse_gpio.py`: reverse-gear GPIO monitor.
+- `scripts/start_dashboard.sh`: Raspberry Pi startup wrapper that updates the repo before launching the dashboard.
 - `dashboard/dashboard.py`: speed and RPM dashboard rendering.
 - `dashboard/camera_view.py`: Picamera2 backup-camera view and mock camera view.
 - `requirements-rpi.txt`: Python packages installed with pip on the Raspberry Pi.
@@ -55,11 +56,13 @@ Use this desktop entry, adjusting paths if the repo lives somewhere else:
 [Desktop Entry]
 Type=Application
 Name=Car Dashboard
-Exec=/home/lumi/CarDash/.venv/bin/python /home/lumi/CarDash/scripts/obd_interface.py
+Exec=/home/lumi/CarDash/scripts/start_dashboard.sh
 WorkingDirectory=/home/lumi/CarDash
 Terminal=false
 X-GNOME-Autostart-enabled=true
 ```
+
+The startup wrapper waits briefly for GitHub access, runs `git fetch origin main` and `git reset --hard origin/main`, then launches the dashboard. The hard reset discards uncommitted local changes on the Raspberry Pi checkout.
 
 ## Dashboard App
 
