@@ -56,8 +56,7 @@ Use this desktop entry, adjusting paths if the repo lives somewhere else:
 [Desktop Entry]
 Type=Application
 Name=Car Dashboard
-Exec=/home/lumi/CarDash/scripts/start_dashboard.sh
-WorkingDirectory=/home/lumi/CarDash
+Exec=/bin/bash -lc "/home/lumi/CarDash/scripts/start_dashboard.sh >> /home/lumi/car-dashboard.log 2>&1"WorkingDirectory=/home/lumi/CarDash
 Terminal=false
 X-GNOME-Autostart-enabled=true
 ```
