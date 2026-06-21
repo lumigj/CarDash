@@ -63,6 +63,107 @@ X-GNOME-Autostart-enabled=true
 
 The startup wrapper waits briefly for GitHub access, runs `git fetch origin main` and `git reset --hard origin/main`, then launches the dashboard. The hard reset discards uncommitted local changes on the Raspberry Pi checkout.
 
+## Clash Verge Rev TUN Notes
+
+Clash Verge Rev is not part of the dashboard startup path. `scripts/start_dashboard.sh` only updates this repo and starts the dashboard app. Install and troubleshoot Clash Verge Rev as a separate Raspberry Pi desktop application.
+
+On a Raspberry Pi OS `arm64` system, download only the ARM64 Debian package:
+
+```bash
+cd /tmp
+wget -O Clash.Verge_2.5.1_arm64.deb https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v2.5.1/Clash.Verge_2.5.1_arm64.deb
+sudo dpkg -i ./Clash.Verge_2.5.1_arm64.deb
+sudo apt -f install
+```
+
+Use `sudo apt -f install` without `-y` if you want to review the dependency plan first. During the observed setup, apt installed missing dependencies and did not upgrade existing packages:
+
+```text
+Upgrading: 0
+Installing: 7
+Removing: 0
+```
+
+If `apt install ./Clash.Verge_2.5.1_arm64.deb` reports `Unsupported file`, use `dpkg -i` as shown above. If `wget` saves `index.html`, the URL was incomplete. The release directory must include the leading `v` in `v2.5.1`, and the URL must end with the `.deb` file name.
+
+TUN mode failed during setup with this log:
+
+```text
+Start TUN listening error: configure tun interface: operation not permitted
+```
+
+This means the Mihomo core did not have permission to create or configure the TUN interface. First confirm the kernel TUN device exists:
+
+```bash
+ls -l /dev/net/tun
+```
+
+Expected output includes:
+
+```text
+crw-rw-rw- 1 root root 10, 200 ... /dev/net/tun
+```
+
+If `/dev/net/tun` is missing:
+
+```bash
+sudo modprobe tun
+sudo mkdir -p /dev/net
+sudo mknod /dev/net/tun c 10 200
+sudo chmod 666 /dev/net/tun
+echo tun | sudo tee /etc/modules-load.d/tun.conf
+```
+
+In Clash Verge Rev, use these TUN settings:
+
+```text
+Tun Stack: GVisor
+Device Name: Mihomo
+Auto Route: on
+Auto Redirect: off
+Strict Route: off
+Auto Detect Interface: on
+DNS Hijack: any:53
+MTU: 1500
+```
+
+Save the settings, turn TUN mode off and on again, then inspect the logs. A working TUN startup looks like:
+
+```text
+[TUN] Tun adapter listening at: Mihomo(...), mtu: 1500, auto route: true, auto redirect: false, ip stack: gVisor
+```
+
+If the log still says `operation not permitted`, authorize the Mihomo core. In newer Linux builds this may be under `Settings -> Clash Core` or a gear menu near the core setting. If the UI does not expose an authorize action, find the core and grant Linux capabilities manually:
+
+```bash
+find ~/.local/share ~/.config -type f \( -name 'verge-mihomo' -o -name 'mihomo' -o -name 'verge-mihomo-alpha' \) 2>/dev/null
+sudo setcap cap_net_admin,cap_net_bind_service=+ep /path/to/verge-mihomo
+getcap /path/to/verge-mihomo
+pkill clash-verge
+clash-verge
+```
+
+After TUN starts, verify traffic in `Connections` inside Clash Verge Rev or with:
+
+```bash
+curl -I https://www.google.com
+```
+
+Rollback steps:
+
+```bash
+sudo setcap -r /path/to/verge-mihomo
+rm -f /tmp/Clash.Verge_2.5.1_arm64.deb /tmp/index.html
+sudo apt remove clash-verge
+sudo apt autoremove
+```
+
+If TUN was manually created and should not auto-load on boot anymore:
+
+```bash
+sudo rm -f /etc/modules-load.d/tun.conf
+```
+
 ## Dashboard App
 
 Run the live dashboard:
