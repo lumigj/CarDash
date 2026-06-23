@@ -10,7 +10,13 @@ def scaled(value, scale):
 
 
 class MockCameraView(QFrame):
-    def __init__(self, scale):
+    def __init__(
+        self,
+        scale,
+        title_text="MOCK BACKUP CAMERA",
+        subtitle_text="Camera preview is mocked because --mock is active.",
+        hint_text="Type R then Enter for reverse, N then Enter for normal.",
+    ):
         super().__init__()
         self.scale = scale
         self.setStyleSheet(
@@ -28,19 +34,19 @@ class MockCameraView(QFrame):
         layout.setSpacing(scaled(12, scale))
         layout.addStretch(1)
 
-        title = QLabel("MOCK BACKUP CAMERA")
+        title = QLabel(title_text)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(
             "font-size: %dpx; font-weight: bold;" % scaled(30, scale)
         )
         layout.addWidget(title)
 
-        subtitle = QLabel("Camera preview is mocked because --mock is active.")
+        subtitle = QLabel(subtitle_text)
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet("font-size: %dpx;" % scaled(18, scale))
         layout.addWidget(subtitle)
 
-        hint = QLabel("Type R then Enter for reverse, N then Enter for normal.")
+        hint = QLabel(hint_text)
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint.setStyleSheet("font-size: %dpx;" % scaled(16, scale))
         layout.addWidget(hint)
@@ -81,23 +87,35 @@ class CameraView(QWidget):
             layout.addWidget(self.mock_view)
             return
 
-        from picamera2 import Picamera2
-        from picamera2.previews.qt import QGlPicamera2
+        try:
+            from picamera2 import Picamera2
+            from picamera2.previews.qt import QGlPicamera2
 
-        self.picam2 = Picamera2()
-        config = self.picam2.create_preview_configuration(
-            main={"size": CAMERA_PREVIEW_SIZE}
-        )
-        self.picam2.configure(config)
+            picam2 = Picamera2()
+            config = picam2.create_preview_configuration(
+                main={"size": CAMERA_PREVIEW_SIZE}
+            )
+            picam2.configure(config)
 
-        self.preview_widget = QGlPicamera2(
-            self.picam2,
-            width=CAMERA_PREVIEW_SIZE[0],
-            height=CAMERA_PREVIEW_SIZE[1],
-            keep_ar=False,
-        )
-        layout.addWidget(self.preview_widget)
-        self.picam2.start()
+            preview_widget = QGlPicamera2(
+                picam2,
+                width=CAMERA_PREVIEW_SIZE[0],
+                height=CAMERA_PREVIEW_SIZE[1],
+                keep_ar=False,
+            )
+            layout.addWidget(preview_widget)
+            picam2.start()
+            self.picam2 = picam2
+            self.preview_widget = preview_widget
+        except Exception as error:
+            print("Camera unavailable: %s" % error)
+            self.mock_view = MockCameraView(
+                scale,
+                title_text="CAMERA UNAVAILABLE",
+                subtitle_text="Dashboard is running without a camera preview.",
+                hint_text="Check Raspberry Pi camera connection and libcamera detection.",
+            )
+            layout.addWidget(self.mock_view)
 
     def set_reverse_state(self, is_reverse):
         if self.mock_view:

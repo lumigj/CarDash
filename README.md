@@ -247,6 +247,8 @@ The dashboard watches Raspberry Pi BCM GPIO `17` for the reverse signal.
 - `GPIO LOW`: backup camera view
 
 This is an active-low input. The camera view uses Picamera2 in live mode. Reverse detection is separate from OBD polling so the camera can switch quickly even if OBD queries are slow.
+If Picamera2 cannot initialize a camera, the dashboard continues running and
+the reverse-camera page shows a camera-unavailable message instead of exiting.
 
 ## Reverse Trigger Circuit
 
