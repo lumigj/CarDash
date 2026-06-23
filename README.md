@@ -7,7 +7,7 @@ CarDash is a custom Raspberry Pi car dashboard. It reads live OBD-II data from a
 - `scripts/obd_interface.py`: main dashboard app.
 - `scripts/obd_logger.py`: standalone OBD-II CSV logger.
 - `scripts/reverse_gpio.py`: reverse-gear GPIO monitor.
-- `scripts/start_dashboard.sh`: Raspberry Pi startup wrapper that updates the repo before launching the dashboard.
+- `scripts/start_dashboard.sh`: Raspberry Pi startup wrapper that launches the dashboard.
 - `dashboard/dashboard.py`: speed and RPM dashboard rendering.
 - `dashboard/camera_view.py`: Picamera2 backup-camera view and mock camera view.
 - `requirements-rpi.txt`: Python packages installed with pip on the Raspberry Pi.
@@ -96,11 +96,12 @@ Terminal=false
 X-GNOME-Autostart-enabled=true
 ```
 
-The startup wrapper waits briefly for GitHub access, runs `git fetch origin main` and `git reset --hard origin/main`, then launches the dashboard. The hard reset discards uncommitted local changes on the Raspberry Pi checkout.
+The startup wrapper launches the local checkout without updating it. To update
+the Raspberry Pi, pull or reset the repo manually before rebooting.
 
 ## Clash Verge Rev TUN Notes
 
-Clash Verge Rev is not part of the dashboard startup path. `scripts/start_dashboard.sh` only updates this repo and starts the dashboard app. Install and troubleshoot Clash Verge Rev as a separate Raspberry Pi desktop application.
+Clash Verge Rev is not part of the dashboard startup path. `scripts/start_dashboard.sh` only starts the dashboard app. Install and troubleshoot Clash Verge Rev as a separate Raspberry Pi desktop application.
 
 On a Raspberry Pi OS `arm64` system, download only the ARM64 Debian package:
 
