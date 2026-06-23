@@ -14,11 +14,45 @@ CarDash is a custom Raspberry Pi car dashboard. It reads live OBD-II data from a
 
 ## Raspberry Pi Setup
 
-Find Raspberry Pis with SSH open on the current subnet:
+Find the Raspberry Pi IP from a computer on the same Wi-Fi or LAN. First try
+the Raspberry Pi hostname:
 
 ```bash
-subnet=$(ip route | awk '/src/ && $1 ~ /^[0-9]+\./ && $1 != "default" {print $1; exit}'); nmap -p 22 --open "$subnet" | awk '/Nmap scan report/{print $NF}'
+ssh raspberrypi.local
 ```
+
+If that does not resolve, find the current subnet:
+
+```bash
+iface=$(ip route show default | awk '{print $5; exit}')
+subnet=$(ip -o -4 addr show dev "$iface" | awk '{print $4; exit}')
+echo "$subnet"
+```
+
+Then list active devices on that subnet:
+
+```bash
+nmap -sn "$subnet"
+```
+
+If SSH is already enabled, this shorter scan prints only devices with SSH open:
+
+```bash
+nmap -p 22 --open "$subnet" | awk '/Nmap scan report/{print $NF}'
+```
+
+Look for a host named `raspberrypi`, a Raspberry Pi Foundation MAC address, or
+a newly appeared IP after powering the Raspberry Pi on. Use that IP to connect:
+
+```bash
+ssh pi@192.168.1.42
+```
+
+Replace `pi` with the actual Raspberry Pi username. If no scan shows the
+Raspberry Pi, confirm it is powered on and connected to the same network. You
+can also check the router DHCP client list, or run `hostname -I` on the
+Raspberry Pi itself. If the IP appears in `nmap -sn` but not in the SSH scan,
+enable SSH on the Raspberry Pi with `sudo raspi-config`.
 
 Install the project on the Raspberry Pi:
 
@@ -56,7 +90,8 @@ Use this desktop entry, adjusting paths if the repo lives somewhere else:
 [Desktop Entry]
 Type=Application
 Name=Car Dashboard
-Exec=/bin/bash -lc "/home/lumi/CarDash/scripts/start_dashboard.sh >> /home/lumi/car-dashboard.log 2>&1"WorkingDirectory=/home/lumi/CarDash
+Exec=/bin/bash -lc "/home/lumi/CarDash/scripts/start_dashboard.sh >> /home/lumi/car-dashboard.log 2>&1"
+WorkingDirectory=/home/lumi/CarDash
 Terminal=false
 X-GNOME-Autostart-enabled=true
 ```
@@ -319,7 +354,7 @@ logging = True
 Change the output file here:
 
 ```python
-log_path = "logs/obd_log.csv"
+log_path = REPO_ROOT / "logs/obd_log.csv"
 ```
 
 Set the sleep interval between polling loops:

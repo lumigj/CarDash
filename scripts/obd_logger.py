@@ -9,8 +9,10 @@ from pathlib import Path
 import obd
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 logging = True
-log_path = "logs/obd_log.csv"
+log_path = REPO_ROOT / "logs/obd_log.csv"
 
 DASHBOARD_COMMANDS = [
     "RPM",

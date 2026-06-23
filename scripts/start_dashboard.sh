@@ -19,4 +19,4 @@ while true; do
 done
 ' bash "$BRANCH" || true
 
-exec "$REPO_DIR/.venv/bin/python" "$REPO_DIR/scripts/obd_interface.py"
+exec "$REPO_DIR/.venv/bin/python" -u "$REPO_DIR/scripts/obd_interface.py"
