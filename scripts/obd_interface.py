@@ -319,7 +319,7 @@ class GaugeBar(QWidget):
         self.name = name
         self.scale = scale
         self.value = 0
-        self.setFixedHeight(scaled(18, scale))
+        self.setFixedHeight(scaled(22, scale))
 
     def set_value(self, value):
         self.value = value
@@ -376,7 +376,7 @@ class GaugeMetric(QFrame):
     def __init__(self, name, scale):
         super().__init__()
         self.name = name
-        self.setFixedWidth(scaled(260, scale))
+        self.setFixedWidth(scaled(290, scale))
         self.setStyleSheet(
             "QFrame { background-color: #050505; border: 1px solid #181818; border-radius: 4px; }"
             "QLabel { border: 0; }"
@@ -384,12 +384,12 @@ class GaugeMetric(QFrame):
 
         layout = QVBoxLayout()
         layout.setContentsMargins(
+            scaled(9, scale),
             scaled(7, scale),
-            scaled(5, scale),
+            scaled(9, scale),
             scaled(7, scale),
-            scaled(5, scale),
         )
-        layout.setSpacing(scaled(5, scale))
+        layout.setSpacing(scaled(7, scale))
 
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
@@ -397,14 +397,14 @@ class GaugeMetric(QFrame):
 
         title = QLabel(display_name(name))
         title.setStyleSheet(
-            "font-size: %dpx; color: #94a3b8; font-weight: bold;" % scaled(14, scale)
+            "font-size: %dpx; color: #94a3b8; font-weight: bold;" % scaled(16, scale)
         )
         header.addWidget(title)
 
         self.value_label = QLabel("-")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.value_label.setStyleSheet(
-            "font-size: %dpx; color: #e5e7eb; font-weight: bold;" % scaled(17, scale)
+            "font-size: %dpx; color: #e5e7eb; font-weight: bold;" % scaled(20, scale)
         )
         header.addWidget(self.value_label, 1)
         layout.addLayout(header)
@@ -430,7 +430,7 @@ class InfoMetric(QFrame):
     def __init__(self, name, scale):
         super().__init__()
         self.name = name
-        self.setFixedWidth(scaled(260, scale))
+        self.setFixedWidth(scaled(290, scale))
         self.setStyleSheet(
             "QFrame { background-color: #050505; border: 1px solid #181818; border-radius: 4px; }"
             "QLabel { border: 0; }"
@@ -438,16 +438,16 @@ class InfoMetric(QFrame):
 
         layout = QHBoxLayout()
         layout.setContentsMargins(
-            scaled(8, scale),
-            scaled(5, scale),
-            scaled(8, scale),
-            scaled(5, scale),
+            scaled(10, scale),
+            scaled(7, scale),
+            scaled(10, scale),
+            scaled(7, scale),
         )
-        layout.setSpacing(scaled(7, scale))
+        layout.setSpacing(scaled(9, scale))
 
         title = QLabel(display_name(name))
         title.setStyleSheet(
-            "font-size: %dpx; color: #94a3b8; font-weight: bold;" % scaled(13, scale)
+            "font-size: %dpx; color: #94a3b8; font-weight: bold;" % scaled(15, scale)
         )
         layout.addWidget(title)
 
@@ -455,7 +455,7 @@ class InfoMetric(QFrame):
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.value_label.setWordWrap(True)
         self.value_label.setStyleSheet(
-            "font-size: %dpx; color: #e5e7eb; font-weight: bold;" % scaled(15, scale)
+            "font-size: %dpx; color: #e5e7eb; font-weight: bold;" % scaled(18, scale)
         )
         layout.addWidget(self.value_label, 1)
 
@@ -522,7 +522,7 @@ class ObdWindow(QWidget):
 
         right_metrics = QVBoxLayout()
         right_metrics.setContentsMargins(0, scaled(8, self.scale), 0, 0)
-        right_metrics.setSpacing(scaled(8, self.scale))
+        right_metrics.setSpacing(scaled(10, self.scale))
         for name in ("TIMING_ADVANCE", "THROTTLE_POS", "ENGINE_LOAD", "COOLANT_TEMP"):
             if name not in ALL_COMMANDS:
                 continue
