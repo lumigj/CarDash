@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-from collections import deque
 from pathlib import Path
 import signal
 import sys
@@ -44,18 +43,17 @@ DEFAULT_PORTS = [
     "/dev/ttyUSB1",
 ]
 
-FAST_COMMANDS = [
-    "RPM",
-    "SPEED",
-    "TIMING_ADVANCE",
-    "THROTTLE_POS",
-    "ENGINE_LOAD",
-
-]
-
 UI_REFRESH_MS = 100
-RETRY_INTERVAL_S = 10.0
-SLOW_COMMANDS = {
+RETRY_INTERVAL_S = 5.0
+SHOW_NEEDLES = True
+ALL_COMMANDS = {
+    # Value is the minimum seconds between polls. 0.0 means poll every loop.
+    # Comment out a command here to stop polling it and hide its right-side widget.
+    "RPM": 0.0,
+    "SPEED": 0.0,
+    "TIMING_ADVANCE": 0.0,
+    "THROTTLE_POS": 0.0,
+    "ENGINE_LOAD": 0.0,
     # "INTAKE_PRESSURE": 0.3,
     "INTAKE_TEMP": 15.0,
     "COOLANT_TEMP": 15.0,
@@ -63,27 +61,6 @@ SLOW_COMMANDS = {
     # "SHORT_FUEL_TRIM_1": 0.3,
     "LONG_FUEL_TRIM_1": 36.0,
 }
-
-ALL_COMMANDS = FAST_COMMANDS + list(SLOW_COMMANDS)
-PRIMARY_COMMANDS = [
-    "SPEED",
-    "RPM",
-]
-GAUGE_COMMANDS = [
-    "TIMING_ADVANCE",
-    "THROTTLE_POS",
-    "ENGINE_LOAD",
-]
-DIRECT_GAUGE_COMMANDS = [
-    "COOLANT_TEMP",
-]
-RIGHT_INFO_COMMANDS = [
-    # "INTAKE_PRESSURE",
-    "INTAKE_TEMP",
-    # "SHORT_FUEL_TRIM_1",
-    "LONG_FUEL_TRIM_1",
-    "STATUS",
-]
 GAUGE_RANGES = {
     "TIMING_ADVANCE": (-20, 40),
     "THROTTLE_POS": (0, 100),
@@ -143,8 +120,6 @@ def parse_mock_reverse(value, parser):
 
 def compact_value(name, value):
     text = str(value)
-    if name in PRIMARY_COMMANDS:
-        return text.split(" ", 1)[0].split(".", 1)[0]
     if name == "STATUS" and text != "-":
         return text.replace("MIL=False", "MIL OFF").replace("MIL=True", "MIL ON").replace(" ignition=", " ")
 
@@ -215,12 +190,10 @@ class QueryThread(QThread):
         self.port = port
         self.connection = None
         self.commands = {}
-        self.next_slow_polls = {
+        self.next_polls = {
             name: 0.0
-            for name in SLOW_COMMANDS
+            for name in ALL_COMMANDS
         }
-        self.pending_slow_commands = deque()
-        self.pending_slow_command_names = set()
         self.running = True
 
     def run(self):
@@ -245,36 +218,19 @@ class QueryThread(QThread):
 
     def poll_loop(self):
         while self.running:
-            now = time.monotonic()
-
-            if not self.poll(FAST_COMMANDS):
-                return
-
-            self.queue_due_slow_commands(now)
-            if not self.poll_next_slow_command():
+            names = self.due_commands(time.monotonic())
+            if names and not self.poll(names):
                 return
 
             self.msleep(1)
 
-    def queue_due_slow_commands(self, now):
-        for name in SLOW_COMMANDS:
-            if name in self.pending_slow_command_names:
-                continue
-            if now >= self.next_slow_polls[name]:
-                self.pending_slow_commands.append(name)
-                self.pending_slow_command_names.add(name)
-
-    def poll_next_slow_command(self):
-        if not self.pending_slow_commands:
-            return True
-
-        name = self.pending_slow_commands.popleft()
-        self.pending_slow_command_names.remove(name)
-        if not self.poll([name]):
-            return False
-
-        self.next_slow_polls[name] = time.monotonic() + SLOW_COMMANDS[name]
-        return True
+    def due_commands(self, now):
+        names = []
+        for name, interval in ALL_COMMANDS.items():
+            if now >= self.next_polls[name]:
+                names.append(name)
+                self.next_polls[name] = now + interval
+        return names
 
     def stop(self):
         self.running = False
@@ -311,7 +267,7 @@ class QueryThread(QThread):
 
         self.commands = {
             cmd.name: cmd
-            for cmd in get_commands(self.connection, ALL_COMMANDS)
+            for cmd in get_commands(self.connection, list(ALL_COMMANDS))
         }
         if not self.commands:
             raise RuntimeError("%s: no dashboard OBD commands supported" % port)
@@ -330,12 +286,14 @@ class QueryThread(QThread):
             self.connection.close()
         self.connection = None
         self.commands = {}
-        self.pending_slow_commands.clear()
-        self.pending_slow_command_names.clear()
+        self.next_polls = {
+            name: 0.0
+            for name in ALL_COMMANDS
+        }
 
     def poll(self, names):
         if is_mock:
-            values = {name: MOCK_VALUES[name] for name in names}
+            values = {name: MOCK_VALUES.get(name, "-") for name in names}
         else:
             values = {}
             try:
@@ -512,6 +470,8 @@ class ObdWindow(QWidget):
         super().__init__()
         self.query_thread = query_thread
         self.latest_values = {name: "-" for name in ALL_COMMANDS}
+        self.latest_values.setdefault("SPEED", "-")
+        self.latest_values.setdefault("RPM", "-")
         self.obd_status = "STARTING"
         self.is_reverse = False
         self.window_width, self.window_height = window_size
@@ -551,7 +511,7 @@ class ObdWindow(QWidget):
         dashboard_row = QHBoxLayout()
         dashboard_row.setContentsMargins(0, 0, 0, 0)
         dashboard_row.setSpacing(scaled(6, self.scale))
-        self.dashboard_widget = DashBoard(self)
+        self.dashboard_widget = DashBoard(self, show_needles=SHOW_NEEDLES)
         self.dashboard_widget.setFixedSize(
             self.dashboard_width,
             self.dashboard_height,
@@ -563,13 +523,14 @@ class ObdWindow(QWidget):
         right_metrics = QVBoxLayout()
         right_metrics.setContentsMargins(0, scaled(8, self.scale), 0, 0)
         right_metrics.setSpacing(scaled(5, self.scale))
-        for name in GAUGE_COMMANDS:
+        for name in ("TIMING_ADVANCE", "THROTTLE_POS", "ENGINE_LOAD", "COOLANT_TEMP"):
+            if name not in ALL_COMMANDS:
+                continue
             self.gauge_metrics[name] = GaugeMetric(name, self.scale)
             right_metrics.addWidget(self.gauge_metrics[name])
-        for name in DIRECT_GAUGE_COMMANDS:
-            self.gauge_metrics[name] = GaugeMetric(name, self.scale)
-            right_metrics.addWidget(self.gauge_metrics[name])
-        for name in RIGHT_INFO_COMMANDS:
+        for name in ("INTAKE_PRESSURE", "INTAKE_TEMP", "SHORT_FUEL_TRIM_1", "LONG_FUEL_TRIM_1", "STATUS"):
+            if name not in ALL_COMMANDS:
+                continue
             self.info_metrics[name] = InfoMetric(name, self.scale)
             right_metrics.addWidget(self.info_metrics[name])
         right_metrics.addStretch(1)

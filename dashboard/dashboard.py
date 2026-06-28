@@ -26,8 +26,9 @@ DIAL_SAFE_PADDING_RATIO = 0.05
 class _DashBoardMain(QWidget):
     """WARNING: This is a private class. do not import this."""
 
-    def __init__(self, parent, size: tuple | list = (1280, 720)):
+    def __init__(self, parent, size: tuple | list = (1280, 720), show_needles=True):
         super().__init__(parent)
+        self.show_needles = show_needles
         if parent is None:
             self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
@@ -56,16 +57,17 @@ class _DashBoardMain(QWidget):
 
 
     def dash_board_design(self):
-        self.dash_board_design_widget = _DashBoardContolsDesign(self.swidget)
+        self.dash_board_design_widget = _DashBoardContolsDesign(self.swidget, self.show_needles)
         self.swidget.addWidget(self.dash_board_design_widget)
 
 
 class _DashBoardContolsDesign(QWidget):
     """WARNING: This is a private class. do not import this."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, show_needles=True):
         super(_DashBoardContolsDesign, self).__init__(parent)
         self.parent_ = parent
+        self.show_needles = show_needles
         self.resize(self.parent_.size())
         self.setContentsMargins(0, 0, 0, 0)
 
@@ -196,24 +198,25 @@ class _DashBoardContolsDesign(QWidget):
                 painter.restore()
         painter.restore()
 
-        # drawing hand
-        painter.setPen(
-            QPen(QGradient(QGradient.Preset.Blessing), round(self.width() * 0.003), cap=Qt.PenCapStyle.RoundCap))
-        painter.setBrush(QBrush(QGradient(QGradient.Preset.Blessing)))
-        hand_polygon = (center + QPoint(0, round(self.height() * 0.0055)),
-                        center + QPoint(0, -round(self.height() * 0.0055)),
-                        center + QPoint(round(self.height() * 0.28), 0))
-        painter.save()
-        painter.translate(center.x(), center.y())
-        painter.rotate(120 + self.speed / self.speed_angle_factor)
-        painter.translate(-center.x(), -center.y())
-        painter.drawPolygon(hand_polygon)
-        painter.restore()
+        if self.show_needles:
+            # drawing hand
+            painter.setPen(
+                QPen(QGradient(QGradient.Preset.Blessing), round(self.width() * 0.003), cap=Qt.PenCapStyle.RoundCap))
+            painter.setBrush(QBrush(QGradient(QGradient.Preset.Blessing)))
+            hand_polygon = (center + QPoint(0, round(self.height() * 0.0055)),
+                            center + QPoint(0, -round(self.height() * 0.0055)),
+                            center + QPoint(round(self.height() * 0.28), 0))
+            painter.save()
+            painter.translate(center.x(), center.y())
+            painter.rotate(120 + self.speed / self.speed_angle_factor)
+            painter.translate(-center.x(), -center.y())
+            painter.drawPolygon(hand_polygon)
+            painter.restore()
 
-        # drawing center point
-        painter.setPen(
-            QPen(QGradient(QGradient.Preset.CrystalRiver), round(self.width() * 0.03), cap=Qt.PenCapStyle.RoundCap))
-        painter.drawPoint(center)
+            # drawing center point
+            painter.setPen(
+                QPen(QGradient(QGradient.Preset.CrystalRiver), round(self.width() * 0.03), cap=Qt.PenCapStyle.RoundCap))
+            painter.drawPoint(center)
 
         # drawing outer dial
         painter.setPen(QPen(QGradient(QGradient.Preset.CrystalRiver), self.width() * 0.005))
@@ -322,24 +325,25 @@ class _DashBoardContolsDesign(QWidget):
             painter.restore()
             painter.restore()
 
-        # drawing hand
-        painter.setPen(
-            QPen(QGradient(QGradient.Preset.AmyCrisp), round(self.width() * 0.003), cap=Qt.PenCapStyle.RoundCap,
-                 join=Qt.PenJoinStyle.RoundJoin))
-        painter.setBrush(QBrush(QGradient(QGradient.Preset.AmyCrisp)))
-        hand_polygon = (center + QPoint(0, round(self.height() * 0.0045)),
-                        center + QPoint(0, -round(self.height() * 0.0045)),
-                        center + QPoint(round(self.height() * 0.22), 0))
-        painter.save()
-        painter.translate(center.x(), center.y())
-        painter.rotate(-self.rpm_arc_angle(self.rpm))
-        painter.translate(-center.x(), -center.y())
-        painter.drawPolygon(hand_polygon)
-        painter.restore()
+        if self.show_needles:
+            # drawing hand
+            painter.setPen(
+                QPen(QGradient(QGradient.Preset.AmyCrisp), round(self.width() * 0.003), cap=Qt.PenCapStyle.RoundCap,
+                     join=Qt.PenJoinStyle.RoundJoin))
+            painter.setBrush(QBrush(QGradient(QGradient.Preset.AmyCrisp)))
+            hand_polygon = (center + QPoint(0, round(self.height() * 0.0045)),
+                            center + QPoint(0, -round(self.height() * 0.0045)),
+                            center + QPoint(round(self.height() * 0.22), 0))
+            painter.save()
+            painter.translate(center.x(), center.y())
+            painter.rotate(-self.rpm_arc_angle(self.rpm))
+            painter.translate(-center.x(), -center.y())
+            painter.drawPolygon(hand_polygon)
+            painter.restore()
 
-        # drawing center point
-        painter.setPen(QPen(QColorConstants.Svg.lemonchiffon, round(self.width() * 0.02), cap=Qt.PenCapStyle.RoundCap))
-        painter.drawPoint(center)
+            # drawing center point
+            painter.setPen(QPen(QColorConstants.Svg.lemonchiffon, round(self.width() * 0.02), cap=Qt.PenCapStyle.RoundCap))
+            painter.drawPoint(center)
 
         # drawing outer dial
         painter.setPen(QPen(QColorConstants.Svg.lemonchiffon, self.width() * 0.005))
@@ -431,8 +435,9 @@ class _DashBoardControls(QObject):
 class DashBoard(QWidget):
     """This is a pyqt widget class to embed this dashboard to other pyqt widgets"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, show_needles=True):
         super(DashBoard, self).__init__(parent)
+        self.show_needles = show_needles
 
         self.vlayout = QVBoxLayout()
         self.vlayout.setContentsMargins(0, 0, 0, 0)
@@ -447,6 +452,7 @@ class DashBoard(QWidget):
         self.dash_board_widget = _DashBoardMain(
             self,
             (self.width(), self.height()),
+            self.show_needles,
         )
         self.dash_board_widget.move(0, 0)
         self.vlayout.addWidget(self.dash_board_widget)
