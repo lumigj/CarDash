@@ -45,7 +45,7 @@ DEFAULT_PORTS = [
 
 UI_REFRESH_MS = 100
 RETRY_INTERVAL_S = 5.0
-SHOW_NEEDLES = True
+SHOW_NEEDLES = False
 ALL_COMMANDS = {
     # Value is the minimum seconds between polls. 0.0 means poll every loop.
     # Comment out a command here to stop polling it and hide its right-side widget.
