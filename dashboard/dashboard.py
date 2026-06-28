@@ -371,9 +371,44 @@ class _DashBoardContolsDesign(QWidget):
         rpm_word_rect.moveLeft(round(rpm_bounding_rect.x() + rpm_bounding_rect.width() * 0.27))
         painter.drawText(rpm_word_rect, Qt.AlignmentFlag.AlignCenter, "RPM")
 
+    def digital_painting(self, painter):
+        painter.fillRect(self.rect(), QColor(BACKGROUND_COLOR))
+
+        speed_font = QFont("Consolas", 0, QFont.Bold, True)
+        speed_font.setPixelSize(round(self.width() * 0.22))
+        painter.setFont(speed_font)
+        painter.setPen(QPen(QGradient(QGradient.Preset.Crystalline), self.width() * 0.004))
+
+        speed_rect = QRectF(0, self.height() * 0.03, self.width(), self.height() * 0.34)
+        painter.drawText(speed_rect, Qt.AlignmentFlag.AlignCenter, str(self.get_speed()))
+
+        label_font = QFont("Consolas", 0, QFont.Bold, True)
+        label_font.setPixelSize(round(self.width() * 0.055))
+        painter.setFont(label_font)
+        painter.setPen(QColor("#94a3b8"))
+        speed_label_rect = QRectF(0, self.height() * 0.32, self.width(), self.height() * 0.1)
+        painter.drawText(speed_label_rect, Qt.AlignmentFlag.AlignCenter, "SPEED km/h")
+
+        rpm_font = QFont("Consolas", 0, QFont.Bold, True)
+        rpm_font.setPixelSize(round(self.width() * 0.13))
+        painter.setFont(rpm_font)
+        painter.setPen(QPen(QGradient(QGradient.Preset.CrystalRiver), self.width() * 0.003))
+
+        rpm_rect = QRectF(0, self.height() * 0.48, self.width(), self.height() * 0.22)
+        painter.drawText(rpm_rect, Qt.AlignmentFlag.AlignCenter, str(self.get_rpm()))
+
+        painter.setFont(label_font)
+        painter.setPen(QColor("#94a3b8"))
+        rpm_label_rect = QRectF(0, self.height() * 0.68, self.width(), self.height() * 0.1)
+        painter.drawText(rpm_label_rect, Qt.AlignmentFlag.AlignCenter, "RPM")
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHints(_RENDER_HINTS, True)
+
+        if not self.show_needles:
+            self.digital_painting(painter)
+            return
 
         self.speedometer_painting(painter)
         self.tachometer_painting(painter)
