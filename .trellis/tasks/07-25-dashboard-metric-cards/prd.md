@@ -19,6 +19,7 @@ Replace the narrow centered metric column with a full-screen block/card dashboar
 * Make every card expand evenly to use the dashboard page.
 * Keep timing, throttle, engine load, and coolant gauge behavior.
 * Present non-gauge values as large, readable metric cards.
+* Center each metric value within its card instead of placing values in a corner.
 * Keep the dark dashboard theme with clearer card separation, spacing, and typography.
 * Keep the existing metric set, values, polling, mock behavior, and reverse-camera behavior unchanged.
 
@@ -27,6 +28,7 @@ Replace the narrow centered metric column with a full-screen block/card dashboar
 * [x] The mock dashboard shows nine distinct cards in three columns and three rows.
 * [x] The card grid fills the useful 1280x720 dashboard area without clipping.
 * [x] All labels and mock values remain readable.
+* [x] Every metric value is visually centered within its card.
 * [x] Gauge bars still reflect timing, throttle, load, and coolant values.
 * [x] `R` still switches to the mock backup camera and `N` returns to the card dashboard.
 * [x] Live OBD polling code is unchanged.

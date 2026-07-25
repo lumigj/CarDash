@@ -18,7 +18,6 @@ from PyQt5.QtWidgets import (
     QApplication,
     QFrame,
     QGridLayout,
-    QHBoxLayout,
     QLabel,
     QStackedWidget,
     QVBoxLayout,
@@ -363,25 +362,18 @@ class GaugeMetric(QFrame):
         )
         layout.setSpacing(scaled(12, scale))
 
-        header = QHBoxLayout()
-        header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(scaled(8, scale))
-
         title = QLabel(display_name(name))
         title.setStyleSheet(
             "font-size: %dpx; color: #94a3b8; font-weight: 600;" % scaled(18, scale)
         )
-        header.addWidget(title)
+        layout.addWidget(title)
 
         self.value_label = QLabel("-")
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.value_label.setStyleSheet(
             "font-size: %dpx; color: #f8fafc; font-weight: bold;" % scaled(30, scale)
         )
-        header.addWidget(self.value_label, 1)
-        layout.addLayout(header)
-
-        layout.addStretch(1)
+        layout.addWidget(self.value_label, 1)
         self.bar = GaugeBar(name, scale)
         layout.addWidget(self.bar)
         self.setLayout(layout)
@@ -425,15 +417,14 @@ class InfoMetric(QFrame):
         )
         layout.addWidget(title)
 
-        layout.addStretch(1)
         self.value_label = QLabel("-")
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.value_label.setWordWrap(True)
         value_size = 24 if name == "STATUS" else 32
         self.value_label.setStyleSheet(
             "font-size: %dpx; color: #f8fafc; font-weight: bold;" % scaled(value_size, scale)
         )
-        layout.addWidget(self.value_label)
+        layout.addWidget(self.value_label, 1)
 
         self.setLayout(layout)
 

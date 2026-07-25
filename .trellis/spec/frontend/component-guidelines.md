@@ -66,6 +66,8 @@ stretch. Each OBD value is represented by either:
 
 Cards must expand with the grid. Do not restore fixed card widths or center a
 single vertical metric column; that wastes most of the 1280x720 display.
+Keep each card title at the top-left and center its value in the remaining card
+body. Gauge bars stay along the bottom edge.
 
 Keep data behavior outside the visual layout. Metric widgets stay registered in
 `gauge_metrics` or `info_metrics`, and `update_values()` updates them from
