@@ -25,19 +25,14 @@ from PyQt5.QtWidgets import (
 )
 
 from dashboard.camera_view import CameraView
-from dashboard.dashboard import DashBoard
 from obd_logger import connect, get_commands, simple_value
 from scripts.reverse_gpio import ReverseGearMonitor
 
 
 is_mock = False
-mock_reverse = False
 BACKGROUND_COLOR = "#000000"
 BASE_WINDOW_WIDTH = 1280
 BASE_WINDOW_HEIGHT = 720
-BASE_DASHBOARD_WIDTH = 850
-BASE_DASHBOARD_HEIGHT = 600
-DASHBOARD_HEIGHT_RATIO = 0.9
 DEFAULT_PORTS = [
     "/dev/ttyUSB0",
     "/dev/ttyUSB1",
@@ -45,20 +40,17 @@ DEFAULT_PORTS = [
 
 UI_REFRESH_MS = 100
 RETRY_INTERVAL_S = 5.0
-SHOW_NEEDLES = False
 ALL_COMMANDS = {
     # Value is the minimum seconds between polls. 0.0 means poll every loop.
     # Comment out a command here to stop polling it and hide its right-side widget.
-    "RPM": 0.0,
-    "SPEED": 0.0,
     "TIMING_ADVANCE": 0.0,
     "THROTTLE_POS": 0.0,
     "ENGINE_LOAD": 0.0,
-    # "INTAKE_PRESSURE": 0.3,
+    "INTAKE_PRESSURE": 0.3,
     "INTAKE_TEMP": 15.0,
     "COOLANT_TEMP": 15.0,
     "STATUS": 20.0,
-    # "SHORT_FUEL_TRIM_1": 0.3,
+    "SHORT_FUEL_TRIM_1": 0.3,
     "LONG_FUEL_TRIM_1": 36.0,
 }
 GAUGE_RANGES = {
@@ -87,35 +79,19 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mock",
-        nargs="?",
-        const="",
-        metavar="STATE",
-        help="Use mock dashboard and camera. Pass R to start in reverse camera mode.",
+        action="store_true",
+        help="Use mock dashboard and camera.",
     )
     parser.add_argument("--port", help="ELM327 port, for example /dev/ttyUSB0")
     parser.add_argument("--mockfull", action="store_true")
     args = parser.parse_args()
-    if args.mock is not None and args.mockfull:
+    if args.mock and args.mockfull:
         parser.error("--mock and --mockfull cannot be used together")
-    if args.mock is not None and args.port:
+    if args.mock and args.port:
         parser.error("--mock cannot be used with --port")
     if args.mockfull and args.port:
         parser.error("--mockfull cannot be used with --port")
-    args.mock_reverse = parse_mock_reverse(args.mock, parser)
     return args
-
-
-def parse_mock_reverse(value, parser):
-    if value is None:
-        return False
-
-    token = value.strip().upper()
-    if token in ("", "N"):
-        return False
-    if token == "R":
-        return True
-
-    parser.error("--mock only accepts R to start in reverse camera mode")
 
 
 def compact_value(name, value):
@@ -172,12 +148,6 @@ def fit_16_9_size(width, height):
 
 def scaled(value, scale):
     return max(1, round(value * scale))
-
-
-def dashboard_size(window_height):
-    height = round(window_height * DASHBOARD_HEIGHT_RATIO)
-    width = round(height * BASE_DASHBOARD_WIDTH / BASE_DASHBOARD_HEIGHT)
-    return width, height
 
 
 class QueryThread(QThread):
@@ -470,8 +440,6 @@ class ObdWindow(QWidget):
         super().__init__()
         self.query_thread = query_thread
         self.latest_values = {name: "-" for name in ALL_COMMANDS}
-        self.latest_values.setdefault("SPEED", "-")
-        self.latest_values.setdefault("RPM", "-")
         self.obd_status = "STARTING"
         self.is_reverse = False
         self.window_width, self.window_height = window_size
@@ -479,7 +447,6 @@ class ObdWindow(QWidget):
             self.window_width / BASE_WINDOW_WIDTH,
             self.window_height / BASE_WINDOW_HEIGHT,
         )
-        self.dashboard_width, self.dashboard_height = dashboard_size(self.window_height)
 
         self.setWindowTitle("OBD Dashboard")
         self.resize(self.window_width, self.window_height)
@@ -511,14 +478,6 @@ class ObdWindow(QWidget):
         dashboard_row = QHBoxLayout()
         dashboard_row.setContentsMargins(0, 0, 0, 0)
         dashboard_row.setSpacing(scaled(6, self.scale))
-        self.dashboard_widget = DashBoard(self, show_needles=SHOW_NEEDLES)
-        self.dashboard_widget.setFixedSize(
-            self.dashboard_width,
-            self.dashboard_height,
-        )
-        self.dashboard_widget.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
-        self.dashboard_widget.show_dashboard()
-        dashboard_row.addWidget(self.dashboard_widget, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         right_metrics = QVBoxLayout()
         right_metrics.setContentsMargins(0, scaled(8, self.scale), 0, 0)
@@ -534,6 +493,7 @@ class ObdWindow(QWidget):
             self.info_metrics[name] = InfoMetric(name, self.scale)
             right_metrics.addWidget(self.info_metrics[name])
         right_metrics.addStretch(1)
+        dashboard_row.addStretch(1)
         dashboard_row.addLayout(right_metrics)
         dashboard_row.addStretch(1)
         self.dashboard_page.setLayout(dashboard_row)
@@ -549,10 +509,7 @@ class ObdWindow(QWidget):
         self.query_thread.status_changed.connect(self.save_status)
         self.query_thread.start()
 
-        self.reverse_monitor = ReverseGearMonitor(
-            mock=is_mock,
-            initial_reverse=mock_reverse,
-        )
+        self.reverse_monitor = ReverseGearMonitor(mock=is_mock)
         self.reverse_monitor.reverse_changed.connect(self.set_reverse_mode)
         self.reverse_monitor.start()
 
@@ -584,10 +541,6 @@ class ObdWindow(QWidget):
 
     def update_values(self):
         self.status_label.setText(self.status_text())
-        self.dashboard_widget.set_values(
-            numeric_value(self.latest_values["SPEED"]),
-            numeric_value(self.latest_values["RPM"]),
-        )
         for name in self.gauge_metrics:
             self.gauge_metrics[name].set_value(self.latest_values[name])
         for name in self.info_metrics:
@@ -602,14 +555,11 @@ class ObdWindow(QWidget):
 
 
 def main():
-    global is_mock, mock_reverse
+    global is_mock
 
     args = parse_args()
     is_mf = args.mockfull
-    is_mock = is_mf
-    if not is_mock:
-        is_mock = args.mock is not None
-    mock_reverse = args.mock_reverse
+    is_mock = args.mock or is_mf
 
     app = QApplication(sys.argv)
     threading.current_thread().name = "ui thread"

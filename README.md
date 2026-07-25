@@ -234,12 +234,6 @@ While the mocked UI is running, type one of these in the same terminal:
 - `R` then Enter: reverse camera mode
 - `N` then Enter: normal dashboard mode
 
-Start directly in mocked reverse-camera mode:
-
-```bash
-python scripts/obd_interface.py --mock R
-```
-
 ## Backup Camera
 
 The dashboard watches Raspberry Pi BCM GPIO `17` for the reverse signal.
