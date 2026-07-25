@@ -23,13 +23,13 @@ Display the current song title, playback progress, and lyrics on the Raspberry P
 
 ## Assumptions (temporary)
 
-* The desired MVP is a readable now-playing/lyrics page, not a full YouTube Music client running on the Raspberry Pi.
-* Internet access may be available through the phone hotspot or another network.
+* The desired MVP is a readable now-playing/lyrics page plus a small Safari remote, not a complete clone of the YouTube Music application.
+* The iPhone Personal Hotspot provides the Raspberry Pi's internet connection while driving.
 
 ## Open Questions
 
 * Is synchronized line-by-line lyric timing required for the MVP?
-* Is the 1280x720 CarDash screen touch-enabled?
+* Is a visible YouTube embedded player on the CarDash music page acceptable?
 
 ## Requirements (evolving)
 
@@ -39,6 +39,8 @@ Display the current song title, playback progress, and lyrics on the Raspberry P
 * Mix all CarDash audio locally and send it as one A2DP stream.
 * Have the Raspberry Pi automatically join the iPhone Personal Hotspot.
 * Serve a lightweight local control page that the iPhone opens in Safari.
+* Let the Safari page search, select, play, pause, seek, and change tracks.
+* Keep playback and lyric state on the Raspberry Pi; Safari is only a remote.
 * Preserve the existing backup-camera page priority.
 * Keep the UI readable and minimally distracting in a vehicle.
 
@@ -46,6 +48,8 @@ Display the current song title, playback progress, and lyrics on the Raspberry P
 
 * [x] Raspberry Pi Bluetooth availability can be verified with documented commands.
 * [ ] Changing tracks through the selected CarDash control surface updates the displayed title and artist.
+* [ ] Safari can open the remote while the Raspberry Pi is joined to the iPhone hotspot.
+* [ ] Safari commands control the Raspberry Pi player without playing audio on the iPhone.
 * [ ] Lyrics are resolved for the current track and shown on the screen.
 * [ ] Raspberry Pi audio plays through the vehicle's Bluetooth media input.
 * [ ] All CarDash audio uses A2DP; no HFP navigation-channel emulation is used.
@@ -63,9 +67,9 @@ Display the current song title, playback progress, and lyrics on the Raspberry P
 ## Out of Scope
 
 * Extracting or scraping lyrics directly from the YouTube Music application UI.
-* Replacing YouTube Music with a custom music streaming client.
+* Reproducing the complete YouTube Music account, library, recommendation, and offline-download experience.
 * Receiving or playing phone audio on the Raspberry Pi.
-* Implementing the feature before the playback and lyrics data paths are selected.
+* Audio-only extraction, hidden/background YouTube embeds, or downloaded YouTube audio.
 
 ## Research References
 
@@ -73,6 +77,7 @@ Display the current song title, playback progress, and lyrics on the Raspberry P
 * [`research/iphone-youtube-music-api.md`](research/iphone-youtube-music-api.md) - Public API limits for observing YouTube Music playback on an iPhone.
 * [`research/vehicle-bluetooth-audio-channels.md`](research/vehicle-bluetooth-audio-channels.md) - Why Bluetooth Classic cannot label independent media and navigation streams.
 * [`research/iphone-cardash-remote.md`](research/iphone-cardash-remote.md) - Simple control paths without making the Raspberry Pi a hotspot.
+* [`research/youtube-player-implementation.md`](research/youtube-player-implementation.md) - Concrete Safari remote, visible YouTube player, lyrics, and A2DP architecture.
 
 ## Feasible Approaches
 
@@ -83,6 +88,8 @@ Keep the current audio path. The user explicitly shares the current track or run
 ### Approach B: CarDash-controlled player
 
 Play through a web/player surface controlled by CarDash so that title and playback time are directly observable. The Raspberry Pi pairs to the vehicle as an A2DP audio source and sends the resulting audio over the vehicle's Bluetooth connection. This enables reliable synchronization but replaces the iPhone as the vehicle's media-audio source. Standard A2DP presents one media stream, so any CarDash music/navigation mixing and ducking happens on the Pi; the vehicle does not receive a separate navigation-channel label.
+
+For a supported YouTube implementation, the embedded player must remain visible on the CarDash music page. It cannot be hidden and used as an audio-only/background player.
 
 ### Approach C: Unofficial extraction
 
@@ -96,7 +103,7 @@ Select music on the CarDash screen. Use the vehicle's existing play/pause/next/p
 
 ### Approach 2: Raspberry Pi joins the iPhone Personal Hotspot
 
-The Raspberry Pi automatically joins the iPhone's hotspot for internet access and hosts a small local control page. Safari opens the Raspberry Pi address; the iPhone does not join a Raspberry Pi hotspot. Initial local reachability and reconnect behavior must be tested on the actual iPhone.
+The Raspberry Pi automatically joins the iPhone's hotspot for internet access and hosts a small local control page. Safari opens `http://lumisrpi.local:8765`, with the current hotspot IP as a fallback; the iPhone does not join a Raspberry Pi hotspot. Initial local reachability and reconnect behavior must be tested on the actual iPhone.
 
 ### Approach 3: BLE native iPhone remote
 
@@ -106,7 +113,7 @@ Build and maintain a native iOS application that sends BLE commands to a GATT se
 
 **Context**: The phone already has a separate audio path and the Raspberry Pi is only needed as a display.
 
-**Decision**: CarDash will control playback. The Raspberry Pi will connect to the vehicle as its A2DP media source, mix all CarDash audio locally, and send one media stream. Do not use HFP to simulate a navigation channel.
+**Decision**: CarDash will control playback. The Raspberry Pi will join the iPhone Personal Hotspot, host a Safari remote, connect to the vehicle as its A2DP media source, mix all CarDash audio locally, and send one media stream. Do not use HFP to simulate a navigation channel.
 
 **Consequences**: CarDash can know the exact playback position without reading another iPhone application's state. The vehicle will not expose separate media/navigation volume handling for CarDash audio. The iPhone can remain a controller, but it is no longer the source of the vehicle's media stream.
 
@@ -119,3 +126,5 @@ Build and maintain a native iOS application that sends BLE commands to a GATT se
 * The Raspberry Pi advertises the Audio Source role required to send its own playback audio to a vehicle Bluetooth receiver.
 * Bluetooth Classic A2DP/HFP does not define a general navigation-audio context. A vehicle's separate navigation volume/channel is likely implemented by CarPlay, Android Auto, a proprietary protocol, HFP behavior, or the vehicle's internal navigation system.
 * Apple Personal Hotspot can share cellular internet over Wi-Fi, Bluetooth, or USB. It may disconnect inactive clients to save battery.
+* The remote control plane can use Python's standard HTTP server plus short polling, avoiding a native iOS application and a WebSocket dependency.
+* YouTube's supported IFrame API provides play/pause/seek, state events, duration, and current time, but policy requires a visible player of at least 200x200 and forbids hidden/background or audio-only playback.
