@@ -371,7 +371,7 @@ class GaugeMetric(QFrame):
         self.value_label = QLabel("-")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.value_label.setStyleSheet(
-            "font-size: %dpx; color: #f8fafc; font-weight: bold;" % scaled(42, scale)
+            "font-size: %dpx; color: #f8fafc; font-weight: bold;" % scaled(50, scale)
         )
         layout.addWidget(self.value_label, 1)
         self.bar = GaugeBar(name, scale)
@@ -420,7 +420,7 @@ class InfoMetric(QFrame):
         self.value_label = QLabel("-")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.value_label.setWordWrap(True)
-        value_size = 24 if name == "STATUS" else 44
+        value_size = 24 if name == "STATUS" else 52
         self.value_label.setStyleSheet(
             "font-size: %dpx; color: #f8fafc; font-weight: bold;" % scaled(value_size, scale)
         )
