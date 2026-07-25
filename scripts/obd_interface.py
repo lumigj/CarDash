@@ -17,6 +17,7 @@ from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import (
     QApplication,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QStackedWidget,
@@ -30,7 +31,7 @@ from scripts.reverse_gpio import ReverseGearMonitor
 
 
 is_mock = False
-BACKGROUND_COLOR = "#000000"
+BACKGROUND_COLOR = "#030712"
 BASE_WINDOW_WIDTH = 1280
 BASE_WINDOW_HEIGHT = 720
 DEFAULT_PORTS = [
@@ -289,7 +290,7 @@ class GaugeBar(QWidget):
         self.name = name
         self.scale = scale
         self.value = 0
-        self.setFixedHeight(scaled(22, scale))
+        self.setFixedHeight(scaled(24, scale))
 
     def set_value(self, value):
         self.value = value
@@ -301,8 +302,8 @@ class GaugeBar(QWidget):
 
         rect = QRectF(self.rect()).adjusted(0, 0, -1, -1)
         radius = scaled(4, self.scale)
-        painter.setPen(QColor("#303030"))
-        painter.setBrush(QColor("#101010"))
+        painter.setPen(QColor("#334155"))
+        painter.setBrush(QColor("#111827"))
         painter.drawRoundedRect(rect, radius, radius)
 
         value = self.value
@@ -346,39 +347,41 @@ class GaugeMetric(QFrame):
     def __init__(self, name, scale):
         super().__init__()
         self.name = name
-        self.setFixedWidth(scaled(290, scale))
+        self.setMinimumSize(scaled(240, scale), scaled(150, scale))
         self.setStyleSheet(
-            "QFrame { background-color: #050505; border: 1px solid #181818; border-radius: 4px; }"
-            "QLabel { border: 0; }"
+            "QFrame { background-color: #0b111b; border: 1px solid #243041; "
+            "border-radius: %dpx; }"
+            "QLabel { background: transparent; border: 0; }" % scaled(12, scale)
         )
 
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            scaled(9, scale),
-            scaled(7, scale),
-            scaled(9, scale),
-            scaled(7, scale),
+            scaled(18, scale),
+            scaled(15, scale),
+            scaled(18, scale),
+            scaled(16, scale),
         )
-        layout.setSpacing(scaled(7, scale))
+        layout.setSpacing(scaled(12, scale))
 
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(scaled(4, scale))
+        header.setSpacing(scaled(8, scale))
 
         title = QLabel(display_name(name))
         title.setStyleSheet(
-            "font-size: %dpx; color: #94a3b8; font-weight: bold;" % scaled(16, scale)
+            "font-size: %dpx; color: #94a3b8; font-weight: 600;" % scaled(18, scale)
         )
         header.addWidget(title)
 
         self.value_label = QLabel("-")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.value_label.setStyleSheet(
-            "font-size: %dpx; color: #e5e7eb; font-weight: bold;" % scaled(20, scale)
+            "font-size: %dpx; color: #f8fafc; font-weight: bold;" % scaled(30, scale)
         )
         header.addWidget(self.value_label, 1)
         layout.addLayout(header)
 
+        layout.addStretch(1)
         self.bar = GaugeBar(name, scale)
         layout.addWidget(self.bar)
         self.setLayout(layout)
@@ -400,34 +403,37 @@ class InfoMetric(QFrame):
     def __init__(self, name, scale):
         super().__init__()
         self.name = name
-        self.setFixedWidth(scaled(290, scale))
+        self.setMinimumSize(scaled(240, scale), scaled(150, scale))
         self.setStyleSheet(
-            "QFrame { background-color: #050505; border: 1px solid #181818; border-radius: 4px; }"
-            "QLabel { border: 0; }"
+            "QFrame { background-color: #0b111b; border: 1px solid #243041; "
+            "border-radius: %dpx; }"
+            "QLabel { background: transparent; border: 0; }" % scaled(12, scale)
         )
 
-        layout = QHBoxLayout()
+        layout = QVBoxLayout()
         layout.setContentsMargins(
-            scaled(10, scale),
-            scaled(7, scale),
-            scaled(10, scale),
-            scaled(7, scale),
+            scaled(18, scale),
+            scaled(15, scale),
+            scaled(18, scale),
+            scaled(16, scale),
         )
-        layout.setSpacing(scaled(9, scale))
+        layout.setSpacing(scaled(8, scale))
 
         title = QLabel(display_name(name))
         title.setStyleSheet(
-            "font-size: %dpx; color: #94a3b8; font-weight: bold;" % scaled(15, scale)
+            "font-size: %dpx; color: #94a3b8; font-weight: 600;" % scaled(18, scale)
         )
         layout.addWidget(title)
 
+        layout.addStretch(1)
         self.value_label = QLabel("-")
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
         self.value_label.setWordWrap(True)
+        value_size = 24 if name == "STATUS" else 32
         self.value_label.setStyleSheet(
-            "font-size: %dpx; color: #e5e7eb; font-weight: bold;" % scaled(18, scale)
+            "font-size: %dpx; color: #f8fafc; font-weight: bold;" % scaled(value_size, scale)
         )
-        layout.addWidget(self.value_label, 1)
+        layout.addWidget(self.value_label)
 
         self.setLayout(layout)
 
@@ -454,16 +460,16 @@ class ObdWindow(QWidget):
 
         layout = QVBoxLayout()
         layout.setContentsMargins(
+            scaled(12, self.scale),
             scaled(6, self.scale),
-            scaled(2, self.scale),
-            scaled(6, self.scale),
-            scaled(4, self.scale),
+            scaled(12, self.scale),
+            scaled(12, self.scale),
         )
-        layout.setSpacing(scaled(3, self.scale))
+        layout.setSpacing(scaled(8, self.scale))
 
         self.status_label = QLabel(self.status_text())
         self.status_label.setStyleSheet(
-            "font-size: %dpx; color: #ff6b6b;" % scaled(16, self.scale)
+            "font-size: %dpx; color: #fb7185; font-weight: 600;" % scaled(15, self.scale)
         )
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.status_label)
@@ -475,28 +481,37 @@ class ObdWindow(QWidget):
 
         self.dashboard_page = QWidget()
         self.dashboard_page.setStyleSheet("background-color: %s; border: 0;" % BACKGROUND_COLOR)
-        dashboard_row = QHBoxLayout()
-        dashboard_row.setContentsMargins(0, 0, 0, 0)
-        dashboard_row.setSpacing(scaled(6, self.scale))
+        dashboard_grid = QGridLayout()
+        dashboard_grid.setContentsMargins(
+            scaled(8, self.scale),
+            0,
+            scaled(8, self.scale),
+            scaled(4, self.scale),
+        )
+        dashboard_grid.setHorizontalSpacing(scaled(14, self.scale))
+        dashboard_grid.setVerticalSpacing(scaled(14, self.scale))
 
-        right_metrics = QVBoxLayout()
-        right_metrics.setContentsMargins(0, scaled(8, self.scale), 0, 0)
-        right_metrics.setSpacing(scaled(10, self.scale))
-        for name in ("TIMING_ADVANCE", "THROTTLE_POS", "ENGINE_LOAD", "COOLANT_TEMP"):
-            if name not in ALL_COMMANDS:
-                continue
-            self.gauge_metrics[name] = GaugeMetric(name, self.scale)
-            right_metrics.addWidget(self.gauge_metrics[name])
-        for name in ("INTAKE_PRESSURE", "INTAKE_TEMP", "SHORT_FUEL_TRIM_1", "LONG_FUEL_TRIM_1", "STATUS"):
-            if name not in ALL_COMMANDS:
-                continue
-            self.info_metrics[name] = InfoMetric(name, self.scale)
-            right_metrics.addWidget(self.info_metrics[name])
-        right_metrics.addStretch(1)
-        dashboard_row.addStretch(1)
-        dashboard_row.addLayout(right_metrics)
-        dashboard_row.addStretch(1)
-        self.dashboard_page.setLayout(dashboard_row)
+        metric_grid = (
+            ("TIMING_ADVANCE", "THROTTLE_POS", "ENGINE_LOAD"),
+            ("COOLANT_TEMP", "INTAKE_PRESSURE", "INTAKE_TEMP"),
+            ("SHORT_FUEL_TRIM_1", "LONG_FUEL_TRIM_1", "STATUS"),
+        )
+        for row, names in enumerate(metric_grid):
+            for column, name in enumerate(names):
+                if name not in ALL_COMMANDS:
+                    continue
+                if name in GAUGE_RANGES:
+                    metric = GaugeMetric(name, self.scale)
+                    self.gauge_metrics[name] = metric
+                else:
+                    metric = InfoMetric(name, self.scale)
+                    self.info_metrics[name] = metric
+                dashboard_grid.addWidget(metric, row, column)
+
+        for index in range(3):
+            dashboard_grid.setColumnStretch(index, 1)
+            dashboard_grid.setRowStretch(index, 1)
+        self.dashboard_page.setLayout(dashboard_grid)
 
         self.camera_page = CameraView(self.scale, mock=is_mock)
         self.stack.addWidget(self.dashboard_page)

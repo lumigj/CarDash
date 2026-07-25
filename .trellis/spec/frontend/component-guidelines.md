@@ -56,4 +56,22 @@ Questions to answer:
 
 <!-- Component-related mistakes your team has made -->
 
-(To be filled by the team)
+### Dashboard metric cards
+
+The normal dashboard page uses a `QGridLayout` with equal row and column
+stretch. Each OBD value is represented by either:
+
+* `GaugeMetric` for values listed in `GAUGE_RANGES`.
+* `InfoMetric` for text or numeric values without a gauge.
+
+Cards must expand with the grid. Do not restore fixed card widths or center a
+single vertical metric column; that wastes most of the 1280x720 display.
+
+Keep data behavior outside the visual layout. Metric widgets stay registered in
+`gauge_metrics` or `info_metrics`, and `update_values()` updates them from
+`latest_values`. The reverse-camera page remains a separate page in the
+existing `QStackedWidget`.
+
+Use `scaled()` for pixel sizes, margins, spacing, and typography. Verify layout
+changes with a real 1280x720 Qt render because widget geometry alone does not
+prove that text is readable.
